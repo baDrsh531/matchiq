@@ -227,3 +227,27 @@ def list_matches(session: Session, limit: int = 50) -> list[dict]:
         }
         for r in records
     ]
+
+
+def search_players(session: Session, query: str, limit: int = 20) -> list[dict]:
+    """Recherche par nom parmi les joueurs déjà analysés (DB uniquement,
+    aucun appel API-Football — complète la recherche d'équipe côté live API)."""
+    rows = (
+        session.query(PlayerScoreRecord)
+        .filter(PlayerScoreRecord.name.ilike(f"%{query}%"))
+        .order_by(PlayerScoreRecord.name)
+        .all()
+    )
+    seen: dict[int, dict] = {}
+    for r in rows:
+        seen.setdefault(
+            r.player_id,
+            {
+                "player_id": r.player_id,
+                "name": r.name,
+                "photo_url": r.photo_url,
+                "team_name": r.team_name,
+                "team_logo": r.team_logo,
+            },
+        )
+    return list(seen.values())[:limit]

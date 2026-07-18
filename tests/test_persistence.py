@@ -11,6 +11,7 @@ from persistence.repository import (
     list_matches,
     save_match_snapshot,
     save_report,
+    search_players,
 )
 
 
@@ -38,10 +39,10 @@ def _match_info(fixture_id=1035038):
     }
 
 
-def _player(player_id, team_name="Arsenal", team_id=42, score=8.0):
+def _player(player_id, team_name="Arsenal", team_id=42, score=8.0, name=None):
     return {
         "player_id": player_id,
-        "name": f"Player {player_id}",
+        "name": name or f"Player {player_id}",
         "photo_url": f"https://media.api-sports.io/football/players/{player_id}.png",
         "team_id": team_id,
         "team_name": team_name,
@@ -153,3 +154,31 @@ def test_get_team_history_builds_squad_from_appearances(session):
     assert squad_by_id[1]["appearances"] == 2
     assert squad_by_id[1]["average_score"] == 7.0
     assert squad_by_id[2]["appearances"] == 1
+
+
+def test_search_players_matches_case_insensitive_substring(session):
+    save_match_snapshot(
+        session,
+        _match_info(),
+        [
+            _player(1, name="Thomas Partey"),
+            _player(2, name="Bukayo Saka"),
+        ],
+    )
+
+    results = search_players(session, "partey")
+    assert len(results) == 1
+    assert results[0]["name"] == "Thomas Partey"
+
+
+def test_search_players_deduplicates_across_matches(session):
+    save_match_snapshot(session, _match_info(), [_player(1, name="Thomas Partey")])
+    save_match_snapshot(session, _match_info_2(), [_player(1, name="Thomas Partey")])
+
+    results = search_players(session, "Partey")
+    assert len(results) == 1
+
+
+def test_search_players_returns_empty_for_no_match(session):
+    save_match_snapshot(session, _match_info(), [_player(1, name="Thomas Partey")])
+    assert search_players(session, "Ronaldo") == []

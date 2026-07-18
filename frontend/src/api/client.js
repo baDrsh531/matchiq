@@ -35,4 +35,13 @@ export const getStandings = (leagueId, season) =>
     .get("/standings", { params: { league_id: leagueId, season } })
     .then((res) => res.data);
 
+export const searchTeams = (query) =>
+  api.get("/search/teams", { params: { query } }).then((res) => res.data);
+
+export const getTeamFixtures = (teamId, season = 2023) =>
+  api.get(`/search/teams/${teamId}/fixtures`, { params: { season } }).then((res) => res.data);
+
+export const searchPlayers = (query) =>
+  api.get("/search/players", { params: { query } }).then((res) => res.data);
+
 export default api;

@@ -83,3 +83,7 @@ a { color: inherit; }
   background-size: 200% 100%;
   animation: shimmer 1.4s ease-in-out infinite;
 }
+
+.result-row:hover {
+  background: var(--bg-panel-raised);
+}

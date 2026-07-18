@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import RecentMatches from "../components/RecentMatches";
+import SearchBar from "../components/SearchBar";
 
 export default function HomePage() {
   const [fixtureIdInput, setFixtureIdInput] = useState("");
@@ -22,11 +23,15 @@ export default function HomePage() {
           Analyse de match par ML + LLM
         </p>
 
-        <form onSubmit={handleSubmit} style={{ display: "flex", gap: 8, marginTop: 16 }}>
+        <div style={{ marginTop: 16 }}>
+          <SearchBar />
+        </div>
+
+        <form onSubmit={handleSubmit} style={{ display: "flex", gap: 8, marginTop: 14 }}>
           <input
             value={fixtureIdInput}
             onChange={(e) => setFixtureIdInput(e.target.value)}
-            placeholder="ID de fixture (ex: 1035038)"
+            placeholder="…ou ID de fixture directement (ex: 1035038)"
             style={{
               flex: 1,
               maxWidth: 320,

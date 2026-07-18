@@ -176,3 +176,30 @@ def fetch_standings(league_id: int, season: int, force_refresh: bool = False) ->
 
     cache_file.write_text(json.dumps(flattened, ensure_ascii=False, indent=2), encoding="utf-8")
     return flattened
+
+
+def search_teams(query: str) -> list[dict]:
+    """Recherche libre d'équipe par nom (pas de cache : la liste des équipes
+    évolue peu mais la recherche doit rester réactive à la frappe)."""
+    payload = _get("teams", {"search": query})
+    return payload.get("response") or []
+
+
+def _team_fixtures_cache_path(team_id: int, season: int) -> Path:
+    return DATA_RAW_DIR / f"team_fixtures_{team_id}_{season}.json"
+
+
+def fetch_team_fixtures(team_id: int, season: int, force_refresh: bool = False) -> list[dict]:
+    """Liste des matchs d'une équipe pour une saison, avec cache disque."""
+    cache_file = _team_fixtures_cache_path(team_id, season)
+    if cache_file.exists() and not force_refresh:
+        logger.info(
+            "Cache trouvé pour les matchs de l'équipe %s/%s, pas d'appel API.", team_id, season
+        )
+        return json.loads(cache_file.read_text(encoding="utf-8"))
+
+    payload = _get("fixtures", {"team": team_id, "season": season})
+    response = payload.get("response") or []
+
+    cache_file.write_text(json.dumps(response, ensure_ascii=False, indent=2), encoding="utf-8")
+    return response
