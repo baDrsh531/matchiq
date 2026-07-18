@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { getPlayerDetail } from "../api/client";
 
 const SILHOUETTE =
@@ -59,23 +60,38 @@ export default function PlayerDetailCard({ fixtureId, player }) {
           {player.position} · {player.team_name} · {player.minutes}&apos;
         </div>
 
-        {status === "idle" && (
-          <button
-            onClick={loadAnalysis}
+        <div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
+          {status === "idle" && (
+            <button
+              onClick={loadAnalysis}
+              style={{
+                background: "var(--bg-panel-raised)",
+                border: "1px solid var(--border)",
+                color: "var(--text)",
+                borderRadius: 8,
+                padding: "6px 12px",
+                fontSize: "0.82rem",
+                cursor: "pointer",
+              }}
+            >
+              Analyse IA de ce joueur
+            </button>
+          )}
+          <Link
+            to={`/player/${player.player_id}`}
             style={{
-              marginTop: 10,
-              background: "var(--bg-panel-raised)",
+              background: "transparent",
               border: "1px solid var(--border)",
-              color: "var(--text)",
+              color: "var(--text-dim)",
               borderRadius: 8,
               padding: "6px 12px",
               fontSize: "0.82rem",
-              cursor: "pointer",
+              textDecoration: "none",
             }}
           >
-            Analyse IA de ce joueur
-          </button>
-        )}
+            Fiche complète →
+          </Link>
+        </div>
         {status === "loading" && (
           <p style={{ color: "var(--text-dim)", marginTop: 10 }}>Analyse en cours…</p>
         )}

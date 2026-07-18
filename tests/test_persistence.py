@@ -5,7 +5,13 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 from persistence.database import Base
-from persistence.repository import list_matches, save_match_snapshot, save_report
+from persistence.repository import (
+    get_player_history,
+    get_team_history,
+    list_matches,
+    save_match_snapshot,
+    save_report,
+)
 
 
 @pytest.fixture
@@ -96,3 +102,54 @@ def test_list_matches_orders_most_recent_first(session):
 
     matches = list_matches(session)
     assert [m["fixture_id"] for m in matches] == [2, 1]
+
+
+def _match_info_2(fixture_id=2000000):
+    return {
+        "fixture_id": fixture_id,
+        "teams": {
+            "home": {"id": 42, "name": "Arsenal", "logo": "https://media.api-sports.io/football/teams/42.png"},
+            "away": {"id": 99, "name": "Chelsea", "logo": "https://media.api-sports.io/football/teams/99.png"},
+        },
+        "goals": {"home": 1, "away": 1},
+        "date": "2023-09-01T15:00:00+00:00",
+        "venue": {"name": "Emirates Stadium"},
+        "league": {"name": "Premier League", "logo": "https://media.api-sports.io/football/leagues/39.png"},
+    }
+
+
+def test_get_player_history_returns_none_when_never_played(session):
+    assert get_player_history(session, 999) is None
+
+
+def test_get_player_history_aggregates_across_matches(session):
+    save_match_snapshot(session, _match_info(), [_player(1, score=9.0)])
+    save_match_snapshot(session, _match_info_2(), [_player(1, score=5.0)])
+
+    history = get_player_history(session, 1)
+    assert history["matches_played"] == 2
+    assert history["average_score"] == 7.0
+    assert history["team_id"] == 42
+    assert history["radar"] == {"précision des passes": 8.0}
+    assert [m["fixture_id"] for m in history["matches"]] == [1035038, 2000000]
+    assert history["matches"][0]["opponent_name"] == "Nottingham Forest"
+    assert history["matches"][1]["opponent_name"] == "Chelsea"
+
+
+def test_get_team_history_returns_none_when_unknown(session):
+    assert get_team_history(session, 424242) is None
+
+
+def test_get_team_history_builds_squad_from_appearances(session):
+    save_match_snapshot(
+        session, _match_info(), [_player(1, score=9.0), _player(2, score=5.0)]
+    )
+    save_match_snapshot(session, _match_info_2(), [_player(1, score=5.0)])
+
+    history = get_team_history(session, 42)
+    assert history["team_name"] == "Arsenal"
+    assert len(history["matches"]) == 2
+    squad_by_id = {p["player_id"]: p for p in history["squad"]}
+    assert squad_by_id[1]["appearances"] == 2
+    assert squad_by_id[1]["average_score"] == 7.0
+    assert squad_by_id[2]["appearances"] == 1

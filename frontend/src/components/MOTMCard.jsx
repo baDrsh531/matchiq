@@ -1,3 +1,5 @@
+import { motion } from "framer-motion";
+
 const SILHOUETTE =
   "data:image/svg+xml;utf8," +
   encodeURIComponent(
@@ -8,22 +10,34 @@ export default function MOTMCard({ player }) {
   if (!player) return null;
 
   return (
-    <div
+    <motion.div
       className="panel"
-      style={{
-        borderColor: "var(--gold)",
-        boxShadow: "0 0 0 1px rgba(217,180,74,0.25), 0 12px 30px -14px rgba(217,180,74,0.35)",
+      initial={{ opacity: 0, scale: 0.96, y: 10 }}
+      animate={{
+        opacity: 1,
+        scale: 1,
+        y: 0,
+        boxShadow: [
+          "0 0 0 1px rgba(217,180,74,0.25), 0 12px 30px -14px rgba(217,180,74,0.15)",
+          "0 0 0 1px rgba(217,180,74,0.25), 0 12px 30px -14px rgba(217,180,74,0.55)",
+          "0 0 0 1px rgba(217,180,74,0.25), 0 12px 30px -14px rgba(217,180,74,0.35)",
+        ],
       }}
+      transition={{ duration: 0.5, ease: "easeOut", boxShadow: { duration: 1.1, delay: 0.2 } }}
+      style={{ borderColor: "var(--gold)" }}
     >
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
         <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
-          <img
+          <motion.img
             src={player.photo_url || SILHOUETTE}
             onError={(e) => {
               e.currentTarget.onerror = null;
               e.currentTarget.src = SILHOUETTE;
             }}
             alt={player.name}
+            initial={{ scale: 0.6, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ duration: 0.35, delay: 0.1 }}
             style={{
               width: 64,
               height: 64,
@@ -44,12 +58,17 @@ export default function MOTMCard({ player }) {
             </p>
           </div>
         </div>
-        <div style={{ textAlign: "right" }}>
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.4, delay: 0.25 }}
+          style={{ textAlign: "right" }}
+        >
           <div className="mono" style={{ fontSize: "2.6rem", color: "var(--gold)", lineHeight: 1 }}>
             {player.composite_score.toFixed(1)}
           </div>
           <div style={{ color: "var(--text-dim)", fontSize: "0.75rem" }}>SCORE / 10</div>
-        </div>
+        </motion.div>
       </div>
 
       <div style={{ display: "flex", gap: 24, marginTop: 18, flexWrap: "wrap" }}>
@@ -82,6 +101,6 @@ export default function MOTMCard({ player }) {
           </div>
         </div>
       </div>
-    </div>
+    </motion.div>
   );
 }

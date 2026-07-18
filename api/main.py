@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from api.routers import matches, players, reports
+from api.routers import matches, players, profiles, reports, standings
 from persistence.database import init_db
 
 app = FastAPI(title="MatchIQ API", version="0.1.0")
@@ -22,6 +22,8 @@ def on_startup() -> None:
 app.include_router(matches.router)
 app.include_router(players.router)
 app.include_router(reports.router)
+app.include_router(profiles.router)
+app.include_router(standings.router)
 
 
 @app.get("/health")

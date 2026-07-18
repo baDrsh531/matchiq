@@ -21,4 +21,18 @@ export const getReport = (fixtureId, refresh = false) =>
     .get(`/matches/${fixtureId}/report`, { params: { refresh } })
     .then((res) => res.data);
 
+export const getPlayerHistory = (playerId) =>
+  api.get(`/players/${playerId}/history`).then((res) => res.data);
+
+export const getTeamHistory = (teamId) =>
+  api.get(`/teams/${teamId}/history`).then((res) => res.data);
+
+export const getSupportedLeagues = () =>
+  api.get("/standings/leagues").then((res) => res.data);
+
+export const getStandings = (leagueId, season) =>
+  api
+    .get("/standings", { params: { league_id: leagueId, season } })
+    .then((res) => res.data);
+
 export default api;

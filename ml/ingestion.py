@@ -152,3 +152,27 @@ def search_league(name: str) -> list[dict]:
     """Utilitaire pour vérifier la couverture d'une ligue (ex: Botola Pro)."""
     payload = _get("leagues", {"search": name})
     return payload.get("response") or []
+
+
+def _standings_cache_path(league_id: int, season: int) -> Path:
+    return DATA_RAW_DIR / f"standings_{league_id}_{season}.json"
+
+
+def fetch_standings(league_id: int, season: int, force_refresh: bool = False) -> list[dict]:
+    """Classement d'une ligue, avec cache disque (le classement ne change pas
+    entre deux consultations rapprochées, inutile de réinterroger l'API)."""
+    cache_file = _standings_cache_path(league_id, season)
+    if cache_file.exists() and not force_refresh:
+        logger.info("Cache trouvé pour le classement %s/%s, pas d'appel API.", league_id, season)
+        return json.loads(cache_file.read_text(encoding="utf-8"))
+
+    payload = _get("standings", {"league": league_id, "season": season})
+    response = payload.get("response") or []
+    if not response:
+        raise ApiFootballError(f"Classement introuvable pour la ligue {league_id}, saison {season}.")
+
+    standings_groups = response[0].get("league", {}).get("standings") or []
+    flattened = [row for group in standings_groups for row in group]
+
+    cache_file.write_text(json.dumps(flattened, ensure_ascii=False, indent=2), encoding="utf-8")
+    return flattened

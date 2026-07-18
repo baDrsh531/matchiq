@@ -1,3 +1,5 @@
+import { motion } from "framer-motion";
+
 const POSITION_COLORS = {
   Goalkeeper: "var(--gold)",
   Defender: "var(--blue)",
@@ -11,14 +13,30 @@ const SILHOUETTE =
     `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" fill="#171f2b"/><circle cx="32" cy="24" r="12" fill="#2a3444"/><path d="M10 58c0-14 10-22 22-22s22 8 22 22" fill="#2a3444"/></svg>`
   );
 
+const container = {
+  hidden: {},
+  show: { transition: { staggerChildren: 0.025 } },
+};
+const item = {
+  hidden: { opacity: 0, x: -12 },
+  show: { opacity: 1, x: 0 },
+};
+
 export default function RankingList({ players, selectedId, onSelect }) {
   return (
     <div className="panel">
       <h3 style={{ marginBottom: 14 }}>Classement du match</h3>
-      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+      <motion.div
+        variants={container}
+        initial="hidden"
+        animate="show"
+        style={{ display: "flex", flexDirection: "column", gap: 6 }}
+      >
         {players.map((p, idx) => (
-          <button
+          <motion.button
             key={p.player_id}
+            variants={item}
+            whileHover={{ x: 2 }}
             onClick={() => onSelect(p.player_id)}
             style={{
               display: "flex",
@@ -85,9 +103,9 @@ export default function RankingList({ players, selectedId, onSelect }) {
             <span className="mono" style={{ fontWeight: 600 }}>
               {p.composite_score.toFixed(1)}
             </span>
-          </button>
+          </motion.button>
         ))}
-      </div>
+      </motion.div>
     </div>
   );
 }

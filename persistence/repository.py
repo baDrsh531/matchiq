@@ -80,6 +80,132 @@ def save_report(session: Session, fixture_id: int, report: dict, motm_player_id:
     session.commit()
 
 
+def get_player_history(session: Session, player_id: int) -> dict | None:
+    """Agrège les performances d'un joueur sur tous les matchs analysés (DB uniquement,
+    aucun appel API-Football supplémentaire) : vue "carrière" pour la fiche joueur."""
+    records = (
+        session.query(PlayerScoreRecord)
+        .filter(PlayerScoreRecord.player_id == player_id)
+        .all()
+    )
+    if not records:
+        return None
+
+    pairs = [(r, session.get(MatchRecord, r.fixture_id)) for r in records]
+    pairs.sort(key=lambda pair: (pair[1].date if pair[1] and pair[1].date else ""))
+
+    matches = []
+    for record, match in pairs:
+        opponent_name = None
+        if match:
+            opponent_name = (
+                match.away_team_name if match.home_team_id == record.team_id else match.home_team_name
+            )
+        matches.append(
+            {
+                "fixture_id": record.fixture_id,
+                "date": match.date if match else None,
+                "opponent_name": opponent_name,
+                "composite_score": record.composite_score,
+                "position": record.position,
+                "minutes": record.minutes,
+            }
+        )
+
+    latest = pairs[-1][0]
+    average_score = round(sum(r.composite_score for r in records) / len(records), 2)
+
+    return {
+        "player_id": player_id,
+        "name": latest.name,
+        "photo_url": latest.photo_url,
+        "team_id": latest.team_id,
+        "team_name": latest.team_name,
+        "team_logo": latest.team_logo,
+        "position": latest.position,
+        "radar": json.loads(latest.radar_json) if latest.radar_json else {},
+        "average_score": average_score,
+        "matches_played": len(records),
+        "matches": matches,
+    }
+
+
+def get_team_history(session: Session, team_id: int) -> dict | None:
+    """Agrège les matchs et l'effectif observé d'une équipe (DB uniquement) : vue
+    "club" pour la fiche équipe, sans nouvel appel API-Football."""
+    match_records = (
+        session.query(MatchRecord)
+        .filter((MatchRecord.home_team_id == team_id) | (MatchRecord.away_team_id == team_id))
+        .order_by(MatchRecord.date)
+        .all()
+    )
+    if not match_records:
+        return None
+
+    team_name = None
+    team_logo = None
+    matches = []
+    for m in match_records:
+        if m.home_team_id == team_id:
+            team_name, team_logo = m.home_team_name, m.home_team_logo
+            opponent_name, goals_for, goals_against = m.away_team_name, m.home_goals, m.away_goals
+        else:
+            team_name, team_logo = m.away_team_name, m.away_team_logo
+            opponent_name, goals_for, goals_against = m.home_team_name, m.away_goals, m.home_goals
+        matches.append(
+            {
+                "fixture_id": m.fixture_id,
+                "date": m.date,
+                "opponent_name": opponent_name,
+                "goals_for": goals_for,
+                "goals_against": goals_against,
+            }
+        )
+
+    player_rows = (
+        session.query(PlayerScoreRecord).filter(PlayerScoreRecord.team_id == team_id).all()
+    )
+    squad_by_player: dict[int, dict] = {}
+    for p in player_rows:
+        entry = squad_by_player.setdefault(
+            p.player_id,
+            {
+                "player_id": p.player_id,
+                "name": p.name,
+                "photo_url": p.photo_url,
+                "position": p.position,
+                "appearances": 0,
+                "total_score": 0.0,
+            },
+        )
+        entry["appearances"] += 1
+        entry["total_score"] += p.composite_score
+
+    squad = sorted(
+        (
+            {
+                "player_id": e["player_id"],
+                "name": e["name"],
+                "photo_url": e["photo_url"],
+                "position": e["position"],
+                "appearances": e["appearances"],
+                "average_score": round(e["total_score"] / e["appearances"], 2),
+            }
+            for e in squad_by_player.values()
+        ),
+        key=lambda s: s["average_score"],
+        reverse=True,
+    )
+
+    return {
+        "team_id": team_id,
+        "team_name": team_name,
+        "team_logo": team_logo,
+        "matches": matches,
+        "squad": squad,
+    }
+
+
 def list_matches(session: Session, limit: int = 50) -> list[dict]:
     records = (
         session.query(MatchRecord)
