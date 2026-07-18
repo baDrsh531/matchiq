@@ -1,0 +1,21 @@
+import axios from "axios";
+
+const api = axios.create({
+  baseURL: import.meta.env.VITE_API_BASE_URL || "http://localhost:8000",
+});
+
+export const getMatch = (fixtureId) =>
+  api.get(`/matches/${fixtureId}`).then((res) => res.data);
+
+export const getPlayers = (fixtureId) =>
+  api.get(`/matches/${fixtureId}/players`).then((res) => res.data);
+
+export const getPlayerDetail = (fixtureId, playerId) =>
+  api.get(`/matches/${fixtureId}/player/${playerId}`).then((res) => res.data);
+
+export const getReport = (fixtureId, refresh = false) =>
+  api
+    .get(`/matches/${fixtureId}/report`, { params: { refresh } })
+    .then((res) => res.data);
+
+export default api;

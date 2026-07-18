@@ -1,0 +1,16 @@
+.env
+__pycache__/
+*.pyc
+data/raw/*
+!data/raw/.gitkeep
+data/processed/*
+!data/processed/.gitkeep
+data/matchiq.db
+node_modules/
+frontend/dist/
+frontend/build/
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+.claude/
