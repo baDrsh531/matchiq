@@ -16,8 +16,10 @@ class PlayerMatchStats(BaseModel):
 
     player_id: int
     name: str
+    photo_url: Optional[str] = None
     team_id: int
     team_name: str
+    team_logo: Optional[str] = None
     position: str  # nom complet normalisé : Goalkeeper / Defender / Midfielder / Attacker
     minutes: int = 0
     rating: Optional[float] = None
@@ -62,8 +64,10 @@ class PlayerScore(BaseModel):
 
     player_id: int
     name: str
+    photo_url: Optional[str] = None
     team_id: int
     team_name: str
+    team_logo: Optional[str] = None
     position: str
     minutes: int
     composite_score: float = Field(..., ge=0, le=10)

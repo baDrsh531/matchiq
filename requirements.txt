@@ -4,6 +4,7 @@ requests>=2.32
 python-dotenv>=1.0
 pydantic>=2.7
 google-genai>=1.0
+sqlalchemy>=2.0
 pandas>=2.2
 numpy>=1.26
 pytest>=8.2

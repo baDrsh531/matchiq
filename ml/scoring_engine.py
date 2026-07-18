@@ -40,6 +40,7 @@ def extract_player_stats(raw_fixture: dict) -> list[PlayerMatchStats]:
         team = team_block.get("team") or {}
         team_id = team.get("id")
         team_name = team.get("name", "")
+        team_logo = team.get("logo")
 
         for entry in team_block.get("players") or []:
             player = entry.get("player") or {}
@@ -64,8 +65,10 @@ def extract_player_stats(raw_fixture: dict) -> list[PlayerMatchStats]:
                 PlayerMatchStats(
                     player_id=player.get("id", 0),
                     name=player.get("name", "Inconnu"),
+                    photo_url=player.get("photo"),
                     team_id=team_id,
                     team_name=team_name,
+                    team_logo=team_logo,
                     position=position,
                     minutes=_to_int(games.get("minutes")),
                     rating=_to_float(games.get("rating")) or None,
@@ -165,8 +168,10 @@ def compute_player_score(
     return {
         "player_id": player_stats.player_id,
         "name": player_stats.name,
+        "photo_url": player_stats.photo_url,
         "team_id": player_stats.team_id,
         "team_name": player_stats.team_name,
+        "team_logo": player_stats.team_logo,
         "position": position,
         "minutes": player_stats.minutes,
         "raw_score": raw_score,

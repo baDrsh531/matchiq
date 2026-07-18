@@ -1,7 +1,13 @@
+import logging
+
 from fastapi import APIRouter, HTTPException
 
 from llm.report_generator import generate_match_report
 from ml.ingestion import ApiFootballError, RateLimitError
+from persistence.database import SessionLocal
+from persistence.repository import save_report
+
+logger = logging.getLogger("matchiq.api")
 
 router = APIRouter(prefix="/matches", tags=["reports"])
 
@@ -14,7 +20,7 @@ def get_report(fixture_id: int, refresh: bool = False):
     ?refresh=true pour forcer une régénération (consomme des tokens LLM).
     """
     try:
-        return generate_match_report(fixture_id, force_refresh=refresh)
+        report = generate_match_report(fixture_id, force_refresh=refresh)
     except ValueError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except RateLimitError as exc:
@@ -27,3 +33,14 @@ def get_report(fixture_id: int, refresh: bool = False):
         raise HTTPException(status_code=503, detail=str(exc)) from exc
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Erreur serveur inattendue: {exc}") from exc
+
+    try:
+        session = SessionLocal()
+        try:
+            save_report(session, fixture_id, report, report.get("motm_player_id"))
+        finally:
+            session.close()
+    except Exception:
+        logger.exception("Échec de la persistance du rapport pour le fixture %s", fixture_id)
+
+    return report

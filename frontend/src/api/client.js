@@ -4,6 +4,9 @@ const api = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL || "http://localhost:8000",
 });
 
+export const getRecentMatches = (limit = 20) =>
+  api.get("/matches", { params: { limit } }).then((res) => res.data);
+
 export const getMatch = (fixtureId) =>
   api.get(`/matches/${fixtureId}`).then((res) => res.data);
 

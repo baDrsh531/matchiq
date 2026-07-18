@@ -1,3 +1,9 @@
+const SILHOUETTE =
+  "data:image/svg+xml;utf8," +
+  encodeURIComponent(
+    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" fill="#171f2b"/><circle cx="32" cy="24" r="12" fill="#2a3444"/><path d="M10 58c0-14 10-22 22-22s22 8 22 22" fill="#2a3444"/></svg>`
+  );
+
 export default function MOTMCard({ player }) {
   if (!player) return null;
 
@@ -10,12 +16,33 @@ export default function MOTMCard({ player }) {
       }}
     >
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-        <div>
-          <span className="badge badge-gold">Homme du match</span>
-          <h2 style={{ fontSize: "1.8rem", marginTop: 10 }}>{player.name}</h2>
-          <p style={{ color: "var(--text-dim)", margin: "4px 0 0" }}>
-            {player.position} — {player.team_name}
-          </p>
+        <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
+          <img
+            src={player.photo_url || SILHOUETTE}
+            onError={(e) => {
+              e.currentTarget.onerror = null;
+              e.currentTarget.src = SILHOUETTE;
+            }}
+            alt={player.name}
+            style={{
+              width: 64,
+              height: 64,
+              borderRadius: "50%",
+              objectFit: "cover",
+              border: "2px solid var(--gold)",
+              flexShrink: 0,
+            }}
+          />
+          <div>
+            <span className="badge badge-gold">Homme du match</span>
+            <h2 style={{ fontSize: "1.8rem", marginTop: 10 }}>{player.name}</h2>
+            <p style={{ color: "var(--text-dim)", margin: "4px 0 0", display: "flex", alignItems: "center", gap: 6 }}>
+              {player.team_logo && (
+                <img src={player.team_logo} alt="" style={{ width: 16, height: 16 }} />
+              )}
+              {player.position} — {player.team_name}
+            </p>
+          </div>
         </div>
         <div style={{ textAlign: "right" }}>
           <div className="mono" style={{ fontSize: "2.6rem", color: "var(--gold)", lineHeight: 1 }}>

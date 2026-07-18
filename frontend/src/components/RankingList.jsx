@@ -5,6 +5,12 @@ const POSITION_COLORS = {
   Attacker: "var(--red)",
 };
 
+const SILHOUETTE =
+  "data:image/svg+xml;utf8," +
+  encodeURIComponent(
+    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" fill="#171f2b"/><circle cx="32" cy="24" r="12" fill="#2a3444"/><path d="M10 58c0-14 10-22 22-22s22 8 22 22" fill="#2a3444"/></svg>`
+  );
+
 export default function RankingList({ players, selectedId, onSelect }) {
   return (
     <div className="panel">
@@ -17,7 +23,7 @@ export default function RankingList({ players, selectedId, onSelect }) {
             style={{
               display: "flex",
               alignItems: "center",
-              gap: 12,
+              gap: 10,
               width: "100%",
               textAlign: "left",
               background:
@@ -39,12 +45,40 @@ export default function RankingList({ players, selectedId, onSelect }) {
                 width: 6,
                 height: 28,
                 borderRadius: 3,
+                flexShrink: 0,
                 background: POSITION_COLORS[p.position] || "var(--text-dim)",
               }}
             />
-            <span style={{ flex: 1 }}>
+            <img
+              src={p.photo_url || SILHOUETTE}
+              onError={(e) => {
+                e.currentTarget.onerror = null;
+                e.currentTarget.src = SILHOUETTE;
+              }}
+              alt=""
+              style={{
+                width: 28,
+                height: 28,
+                borderRadius: "50%",
+                objectFit: "cover",
+                flexShrink: 0,
+                background: "var(--bg-panel-raised)",
+              }}
+            />
+            <span style={{ flex: 1, minWidth: 0 }}>
               <div>{p.name}</div>
-              <div style={{ fontSize: "0.72rem", color: "var(--text-dim)" }}>
+              <div
+                style={{
+                  fontSize: "0.72rem",
+                  color: "var(--text-dim)",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 4,
+                }}
+              >
+                {p.team_logo && (
+                  <img src={p.team_logo} alt="" style={{ width: 12, height: 12 }} />
+                )}
                 {p.position} · {p.team_name}
               </div>
             </span>

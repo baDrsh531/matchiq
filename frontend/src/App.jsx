@@ -3,8 +3,10 @@ import { getMatch, getPlayers } from "./api/client";
 import MOTMCard from "./components/MOTMCard";
 import RankingList from "./components/RankingList";
 import RadarComparison from "./components/RadarComparison";
+import PlayerDetailCard from "./components/PlayerDetailCard";
 import Timeline from "./components/Timeline";
 import AIPanel from "./components/AIPanel";
+import RecentMatches from "./components/RecentMatches";
 
 function App() {
   const [fixtureIdInput, setFixtureIdInput] = useState("");
@@ -14,6 +16,7 @@ function App() {
   const [selectedPlayerId, setSelectedPlayerId] = useState(null);
   const [status, setStatus] = useState("idle"); // idle | loading | error | done
   const [errorMessage, setErrorMessage] = useState("");
+  const [historyRefreshKey, setHistoryRefreshKey] = useState(0);
 
   useEffect(() => {
     if (!fixtureId) return;
@@ -29,6 +32,7 @@ function App() {
         setPlayers(playersData.players);
         setSelectedPlayerId(playersData.players[0]?.player_id ?? null);
         setStatus("done");
+        setHistoryRefreshKey((k) => k + 1);
       })
       .catch((err) => {
         if (cancelled) return;
@@ -47,6 +51,11 @@ function App() {
     e.preventDefault();
     const id = parseInt(fixtureIdInput, 10);
     if (!Number.isNaN(id)) setFixtureId(id);
+  };
+
+  const handleSelectFromHistory = (id) => {
+    setFixtureIdInput(String(id));
+    setFixtureId(id);
   };
 
   const motm = players[0];
@@ -96,6 +105,10 @@ function App() {
             Charger le match
           </button>
         </form>
+
+        {status !== "done" && (
+          <RecentMatches onSelect={handleSelectFromHistory} refreshKey={historyRefreshKey} />
+        )}
       </header>
 
       {status === "loading" && <p>Chargement du match…</p>}
@@ -103,17 +116,27 @@ function App() {
 
       {status === "done" && match && (
         <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-          <div className="panel" style={{ display: "flex", justifyContent: "space-between" }}>
-            <div>
-              <div style={{ fontWeight: 600 }}>{match.teams?.home?.name}</div>
-              <div style={{ color: "var(--text-dim)", fontSize: "0.8rem" }}>Domicile</div>
+          <div className="panel" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              {match.teams?.home?.logo && (
+                <img src={match.teams.home.logo} alt="" style={{ width: 32, height: 32 }} />
+              )}
+              <div>
+                <div style={{ fontWeight: 600 }}>{match.teams?.home?.name}</div>
+                <div style={{ color: "var(--text-dim)", fontSize: "0.8rem" }}>Domicile</div>
+              </div>
             </div>
             <div className="mono" style={{ fontSize: "1.8rem" }}>
               {match.goals?.home} - {match.goals?.away}
             </div>
-            <div style={{ textAlign: "right" }}>
-              <div style={{ fontWeight: 600 }}>{match.teams?.away?.name}</div>
-              <div style={{ color: "var(--text-dim)", fontSize: "0.8rem" }}>Extérieur</div>
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <div style={{ textAlign: "right" }}>
+                <div style={{ fontWeight: 600 }}>{match.teams?.away?.name}</div>
+                <div style={{ color: "var(--text-dim)", fontSize: "0.8rem" }}>Extérieur</div>
+              </div>
+              {match.teams?.away?.logo && (
+                <img src={match.teams.away.logo} alt="" style={{ width: 32, height: 32 }} />
+              )}
             </div>
           </div>
 
@@ -125,7 +148,10 @@ function App() {
               selectedId={selectedPlayerId}
               onSelect={setSelectedPlayerId}
             />
-            <RadarComparison player={selectedPlayer} />
+            <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+              <PlayerDetailCard fixtureId={fixtureId} player={selectedPlayer} />
+              <RadarComparison player={selectedPlayer} />
+            </div>
           </div>
 
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>

@@ -112,6 +112,7 @@ def generate_match_report(fixture_id: int, force_refresh: bool = False) -> dict:
 
     report = {
         "fixture_id": fixture_id,
+        "motm_player_id": motm["player_id"],
         "motm_report": motm_report,
         "player_reports": player_reports,
         "tactical_suggestions": tactical_suggestions,

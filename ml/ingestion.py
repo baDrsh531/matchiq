@@ -128,6 +128,26 @@ def fetch_fixture(fixture_id: int, force_refresh: bool = False) -> dict:
     return combined
 
 
+def build_match_summary(fixture_id: int, raw: dict) -> dict:
+    """Transforme la réponse combinée de fetch_fixture en résumé exploitable
+    par l'API (équipes, score, statut, logos) et par la persistance."""
+    fixture_info = raw.get("fixture", {})
+    teams = fixture_info.get("teams", {})
+    goals = fixture_info.get("goals", {})
+    status = fixture_info.get("fixture", {}).get("status", {})
+
+    return {
+        "fixture_id": fixture_id,
+        "teams": teams,
+        "goals": goals,
+        "status": status,
+        "date": fixture_info.get("fixture", {}).get("date"),
+        "venue": fixture_info.get("fixture", {}).get("venue"),
+        "league": fixture_info.get("league"),
+        "events": raw.get("events", []),
+    }
+
+
 def search_league(name: str) -> list[dict]:
     """Utilitaire pour vérifier la couverture d'une ligue (ex: Botola Pro)."""
     payload = _get("leagues", {"search": name})
