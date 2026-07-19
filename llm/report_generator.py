@@ -9,6 +9,12 @@ batchés (1 MOTM + 1 pour tous les joueurs + 1 pour les deux équipes) plutôt
 qu'un appel par joueur/équipe : sur un match à 30 joueurs ça remplace ~33
 appels séquentiels par 3, ce qui évite de saturer les limites de requêtes/
 minute des plans LLM gratuits.
+
+Chaque prompt est enrichi (gratuitement, données déjà en cache/DB) avec :
+- le déroulé du match (buts, cartons, changements) pour le rapport MOTM et
+  les analyses joueurs, afin de relier les stats au récit du match ;
+- la forme récente du joueur (matchs précédents déjà analysés, via la DB)
+  pour commenter une tendance plutôt qu'un match isolé.
 """
 import json
 import re
@@ -22,7 +28,10 @@ from llm.prompt_templates import (
     motm_report_prompt,
     player_analysis_prompt,
 )
+from ml.ingestion import fetch_fixture
 from ml.scoring_engine import rank_players
+from persistence.database import SessionLocal
+from persistence.repository import get_player_history
 
 
 def _report_cache_path(fixture_id: int) -> Path:
@@ -50,6 +59,60 @@ def _parse_batch_blocks(text: str, keys: list[str], fallback: str) -> dict[str, 
     return {key: parsed.get(key, fallback) for key in keys}
 
 
+def _summarize_events(raw_events: list[dict] | None) -> list[dict]:
+    """Réduit les événements bruts de l'API-Football aux champs utiles au LLM.
+
+    Garde `player_id`/`assist_id` (int) pour un rapprochement fiable avec les
+    scores joueurs : les événements utilisent des noms abrégés (ex: "B. Saka")
+    alors que les scores utilisent le nom complet ("Bukayo Saka") — comparer
+    les IDs plutôt que les chaînes évite un rapprochement silencieusement raté.
+    """
+    summary = []
+    for e in raw_events or []:
+        time = e.get("time") or {}
+        minute = time.get("elapsed")
+        extra = time.get("extra")
+        player = e.get("player") or {}
+        assist = e.get("assist") or {}
+        summary.append(
+            {
+                "minute": f"{minute}+{extra}" if extra else minute,
+                "type": e.get("type"),
+                "detail": e.get("detail"),
+                "team": (e.get("team") or {}).get("name"),
+                "player": player.get("name"),
+                "player_id": player.get("id"),
+                "assist": assist.get("name"),
+                "assist_id": assist.get("id"),
+            }
+        )
+    return summary
+
+
+def _events_for_player(events_summary: list[dict], player_id: int) -> list[dict]:
+    """Événements impliquant ce joueur (buteur ou passeur), par ID exact.
+
+    Renvoie des événements "nettoyés" (sans les IDs internes, non pertinents
+    pour le LLM)."""
+    matched = [e for e in events_summary if player_id in (e.get("player_id"), e.get("assist_id"))]
+    return [{k: v for k, v in e.items() if k not in ("player_id", "assist_id")} for e in matched]
+
+
+def _recent_form(player_id: int, exclude_fixture_id: int, limit: int = 3) -> list[dict]:
+    """Derniers matchs déjà analysés pour ce joueur (hors match courant),
+    pour donner au LLM une tendance plutôt qu'un instantané isolé."""
+    session = SessionLocal()
+    try:
+        history = get_player_history(session, player_id)
+    finally:
+        session.close()
+
+    if not history:
+        return []
+    matches = [m for m in history["matches"] if m["fixture_id"] != exclude_fixture_id]
+    return matches[-limit:]
+
+
 def get_player_analysis(fixture_id: int, player_id: int, force_refresh: bool = False) -> dict:
     """Retourne le score ML + l'analyse LLM d'un joueur, avec mise en cache."""
     ranked_players = rank_players(fixture_id)
@@ -63,7 +126,18 @@ def get_player_analysis(fixture_id: int, player_id: int, force_refresh: bool = F
         cached["score"] = player
         return cached
 
-    analysis = generate_report(player_analysis_prompt(player))
+    raw = fetch_fixture(fixture_id)
+    events_summary = _summarize_events(raw.get("events"))
+    player_events = _events_for_player(events_summary, player_id)
+    recent_matches = _recent_form(player_id, exclude_fixture_id=fixture_id)
+
+    analysis = generate_report(
+        player_analysis_prompt(
+            player,
+            recent_matches=recent_matches or None,
+            player_events=player_events or None,
+        )
+    )
     result = {"score": player, "analysis": analysis}
 
     cache_file.write_text(
@@ -85,11 +159,25 @@ def generate_match_report(fixture_id: int, force_refresh: bool = False) -> dict:
     if not ranked_players:
         raise ValueError(f"Aucun joueur trouvé pour le fixture {fixture_id}.")
 
+    raw = fetch_fixture(fixture_id)
+    events_summary = _summarize_events(raw.get("events"))
+
     motm = ranked_players[0]
-    motm_report = generate_report(motm_report_prompt(motm, ranked_players))
+    motm_report = generate_report(motm_report_prompt(motm, ranked_players, events_summary))
+
+    enriched_players = []
+    for player in ranked_players:
+        enriched = dict(player)
+        recent_matches = _recent_form(player["player_id"], exclude_fixture_id=fixture_id)
+        if recent_matches:
+            enriched["recent_matches"] = recent_matches
+        player_events = _events_for_player(events_summary, player["player_id"])
+        if player_events:
+            enriched["match_events"] = player_events
+        enriched_players.append(enriched)
 
     player_ids = [str(p["player_id"]) for p in ranked_players]
-    batch_text = generate_report(batch_player_analysis_prompt(ranked_players))
+    batch_text = generate_report(batch_player_analysis_prompt(enriched_players))
     player_reports = _parse_batch_blocks(
         batch_text, player_ids, fallback="Analyse indisponible pour ce joueur."
     )
