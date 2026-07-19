@@ -1,5 +1,7 @@
 # MatchIQ
 
+![MatchIQ](assets/hero.png)
+
 Analyse de match football : le ML calcule les scores, le LLM les interprète.
 
 ## Backend
