@@ -20,7 +20,14 @@ class _FakeResponse:
 def test_fetch_fixture_uses_cache_when_present(tmp_path, monkeypatch):
     monkeypatch.setattr(ingestion, "DATA_RAW_DIR", tmp_path)
     cache_file = tmp_path / "12345.json"
-    cached_payload = {"fixture_id": 12345, "fixture": {}, "statistics": [], "players": [], "events": []}
+    cached_payload = {
+        "fixture_id": 12345,
+        "fixture": {},
+        "statistics": [],
+        "players": [],
+        "events": [],
+        "lineups": [],
+    }
     cache_file.write_text(json.dumps(cached_payload), encoding="utf-8")
 
     def fail_get(*args, **kwargs):
@@ -41,6 +48,7 @@ def test_fetch_fixture_calls_api_and_caches(tmp_path, monkeypatch):
         "fixtures/statistics": _FakeResponse({"response": [{"stat": 1}], "errors": []}),
         "fixtures/players": _FakeResponse({"response": [{"players": []}], "errors": []}),
         "fixtures/events": _FakeResponse({"response": [{"event": 1}], "errors": []}),
+        "fixtures/lineups": _FakeResponse({"response": [{"formation": "4-3-3"}], "errors": []}),
     }
 
     def fake_get(url, headers, params, timeout):
@@ -111,6 +119,9 @@ def test_fetch_fixture_resumes_after_partial_rate_limit(tmp_path, monkeypatch):
                     {}, status_code=429, headers={"x-ratelimit-requests-remaining": "0"}
                 )
             return _FakeResponse({"response": [{"event": 1}], "errors": []})
+        if url.endswith("fixtures/lineups"):
+            call_log.append("lineups")
+            return _FakeResponse({"response": [{"formation": "4-3-3"}], "errors": []})
         raise AssertionError(f"URL inattendue: {url}")
 
     monkeypatch.setattr(ingestion.requests, "get", fake_get)
@@ -123,11 +134,12 @@ def test_fetch_fixture_resumes_after_partial_rate_limit(tmp_path, monkeypatch):
     assert set(cached.keys()) == {"fixture_id", "fixture", "statistics", "players"}
     assert call_log == ["fixtures", "statistics", "players", "events"]
 
-    # deuxième essai (quota reconstitué) : seul "events" doit être rappelé
+    # deuxième essai (quota reconstitué) : "events" puis "lineups" (jamais
+    # encore récupéré) doivent être rappelés, mais pas fixture/statistics/players
     call_log.clear()
     events_should_fail = False
     result = ingestion.fetch_fixture(555)
 
-    assert call_log == ["events"]
+    assert call_log == ["events", "lineups"]
     assert result["events"] == [{"event": 1}]
     assert result["fixture"] == {"id": 555}

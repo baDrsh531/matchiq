@@ -85,24 +85,32 @@ def fetch_fixture_events(fixture_id: int) -> list[dict]:
     return payload.get("response") or []
 
 
+def fetch_fixture_lineups(fixture_id: int) -> list[dict]:
+    payload = _get("fixtures/lineups", {"fixture": fixture_id})
+    return payload.get("response") or []
+
+
 def _cache_path(fixture_id: int) -> Path:
     return DATA_RAW_DIR / f"{fixture_id}.json"
 
 
-_REQUIRED_KEYS = ("fixture", "statistics", "players", "events")
+_REQUIRED_KEYS = ("fixture", "statistics", "players", "events", "lineups")
 
 
 def fetch_fixture(fixture_id: int, force_refresh: bool = False) -> dict:
-    """Récupère et combine les 4 endpoints pour un match, avec cache disque.
+    """Récupère et combine les 5 endpoints pour un match, avec cache disque.
 
-    Si data/raw/{fixture_id}.json existe déjà et contient les 4 clés, on le
+    Si data/raw/{fixture_id}.json existe déjà et contient les 5 clés, on le
     réutilise directement (sauf force_refresh=True) pour ne pas gaspiller le
     quota journalier.
 
     Le cache est écrit de façon incrémentale après CHAQUE appel réussi : si un
-    des 4 appels échoue (ex: quota dépassé en cours de route), les appels déjà
+    des appels échoue (ex: quota dépassé en cours de route), les appels déjà
     réussis restent en cache et ne sont pas refaits inutilement la prochaine
-    fois (même après réinitialisation du quota le lendemain).
+    fois (même après réinitialisation du quota le lendemain). Cela permet
+    aussi de "compléter" silencieusement un cache existant créé avant l'ajout
+    d'une nouvelle clé (ex: "lineups") : un seul appel supplémentaire au lieu
+    de tout refaire.
     """
     cache_file = _cache_path(fixture_id)
     combined: dict = {"fixture_id": fixture_id}
@@ -123,6 +131,7 @@ def fetch_fixture(fixture_id: int, force_refresh: bool = False) -> dict:
     _ensure("statistics", fetch_fixture_statistics)
     _ensure("players", fetch_fixture_players)
     _ensure("events", fetch_fixture_events)
+    _ensure("lineups", fetch_fixture_lineups)
 
     logger.info("Fixture %s mis en cache dans %s", fixture_id, cache_file)
     return combined
@@ -145,6 +154,7 @@ def build_match_summary(fixture_id: int, raw: dict) -> dict:
         "venue": fixture_info.get("fixture", {}).get("venue"),
         "league": fixture_info.get("league"),
         "events": raw.get("events", []),
+        "lineups": raw.get("lineups", []),
     }
 
 
