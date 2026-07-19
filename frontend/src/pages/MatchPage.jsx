@@ -8,6 +8,7 @@ import RadarComparison from "../components/RadarComparison";
 import PlayerDetailCard from "../components/PlayerDetailCard";
 import Timeline from "../components/Timeline";
 import AIPanel from "../components/AIPanel";
+import ShareMOTMButton from "../components/ShareMOTMButton";
 import { MatchSkeleton } from "../components/Skeleton";
 
 export default function MatchPage() {
@@ -101,6 +102,9 @@ export default function MatchPage() {
           </motion.div>
 
           <MOTMCard player={motm} />
+          <div style={{ display: "flex", justifyContent: "flex-end" }}>
+            <ShareMOTMButton player={motm} match={match} />
+          </div>
 
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
             <RankingList
