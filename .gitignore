@@ -21,6 +21,12 @@ venv/
 *.egg-info/
 .pytest_cache/
 
+# --- Rapports de couverture (artefacts, jamais commites) ---
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+
 # --- Donnees applicatives (cache API + base locale) ---
 data/raw/*
 !data/raw/.gitkeep
@@ -37,3 +43,6 @@ frontend/build/
 
 # --- Outillage local ---
 .claude/
+.history/
+.vscode/
+.idea/
