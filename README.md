@@ -43,9 +43,13 @@ poste, détaillé en radar chart.
 
 ![Classement et fiche joueur](assets/screenshots/player.png)
 
-**Comparateur** — superposition des profils statistiques de deux joueurs déjà analysés.
+**Comparateur d'équipes** — bilan, buts et meilleur joueur de deux équipes déjà analysées.
 
-![Comparateur](assets/screenshots/compare.png)
+![Comparateur d'équipes](assets/screenshots/compare_teams.png)
+
+**Comparateur de joueurs** — superposition des profils statistiques de deux joueurs.
+
+![Comparateur de joueurs](assets/screenshots/compare.png)
 
 **Accueil** — historique des matchs analysés et recherche par équipe, joueur ou identifiant de match.
 
