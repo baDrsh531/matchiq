@@ -28,6 +28,7 @@ coverage.xml
 htmlcov/
 
 # --- Donnees applicatives (cache API + base locale) ---
+# `data/` est le cache de travail local : volumineux, mouvant, jamais commite.
 data/raw/*
 !data/raw/.gitkeep
 data/processed/*
@@ -36,13 +37,21 @@ data/matchiq.db
 *.db
 *.sqlite3
 
+# `demo_data/` est l'exception assumee : jeu reduit et fige (3 matchs) servi
+# par l'instance de demonstration publique, qui n'a aucun acces reseau.
+!demo_data/
+!demo_data/**
+
 # --- Frontend ---
 node_modules/
 frontend/dist/
 frontend/build/
 
 # --- Outillage local ---
-.claude/
+# .claude/ contient des reglages de session propres a la machine, sauf
+# skills/ : ce sont des procedures projet (deploiement), versionnees a ce titre.
+.claude/*
+!.claude/skills/
 .history/
 .vscode/
 .idea/

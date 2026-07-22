@@ -97,7 +97,10 @@ def _player(player_id=1, name="Thomas Partey", score=10.0):
 def test_health_returns_ok(client):
     r = client.get("/health")
     assert r.status_code == 200
-    assert r.json() == {"status": "ok"}
+    body = r.json()
+    assert body["status"] == "ok"
+    # exposé pour qu'un client sache si l'instance est en lecture seule
+    assert body["demo_mode"] is False
 
 
 # --------------------------------------------------------------------------
