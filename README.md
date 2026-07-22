@@ -1,31 +1,72 @@
 # MatchIQ
 
+[![Python](https://img.shields.io/badge/Python-3.12-3776AB?logo=python&logoColor=white)](https://www.python.org/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.111-009688?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
+[![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=black)](https://react.dev/)
+[![Vite](https://img.shields.io/badge/Vite-8-646CFF?logo=vite&logoColor=white)](https://vitejs.dev/)
+[![SQLite](https://img.shields.io/badge/SQLite-3-003B57?logo=sqlite&logoColor=white)](https://www.sqlite.org/)
+[![Gemini API](https://img.shields.io/badge/Gemini%20API-LLM-8E75B2?logo=googlegemini&logoColor=white)](https://ai.google.dev/)
+[![Tests](https://github.com/baDrsh531/matchiq/actions/workflows/tests.yml/badge.svg)](https://github.com/baDrsh531/matchiq/actions/workflows/tests.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
+**Analyse de match de football : le ML calcule les scores, le LLM les interprète.**
+
 ![MatchIQ](assets/hero.png)
 
-Analyse de match football : le ML calcule les scores, le LLM les interprète.
+## Pourquoi ce projet
 
-## Backend
+Les statistiques brutes d'un match de foot (passes, tirs, duels, xG) sont abondantes mais muettes :
+elles disent *ce qui s'est passé*, jamais *pourquoi ça a compté*. MatchIQ répond à ce manque en deux
+temps — un moteur de scoring composite pondéré par poste transforme les stats d'un joueur en une note
+unique et comparable, puis un LLM (Gemini) traduit ces scores en un rapport de match lisible : homme
+du match justifié, lecture tactique, points forts et faiblesses de chaque joueur.
 
-```powershell
-.\.venv\Scripts\python.exe -m pip install -r requirements.txt
-.\.venv\Scripts\python.exe -m pytest tests/
-.\.venv\Scripts\python.exe -m uvicorn api.main:app --reload --port 8000
+Le résultat est un rapport que peut lire un supporter, appuyé sur des chiffres qu'accepterait un
+analyste — et une démonstration de bout en bout d'un pipeline *ingestion → ML → LLM → API → UI*.
+
+## Aperçu
+
+<!-- Captures à ajouter dans assets/screenshots/, puis décommenter ce bloc :
+
+| Vue | Capture |
+|---|---|
+| Dashboard — derniers matchs analysés | ![Dashboard](assets/screenshots/dashboard.png) |
+| Comparateur équipe vs équipe | ![Comparateur](assets/screenshots/compare.png) |
+| Fiche joueur — score composite et radar chart | ![Fiche joueur](assets/screenshots/player.png) |
+| Rapport de match généré par le LLM | ![Rapport](assets/screenshots/report.png) |
+
+-->
+
+Captures détaillées de l'interface à venir.
+
+## Architecture
+
+```mermaid
+flowchart LR
+    A[API-Football<br/>fixtures · stats · lineups] --> B[Cache JSON<br/>data/raw/]
+    B --> C[Scoring engine<br/>composite pondéré par poste]
+    C --> D[Interprétation LLM<br/>Gemini API]
+    D --> E[Cache rapports<br/>data/processed/]
+    C --> F[(SQLite<br/>data/matchiq.db)]
+    E --> F
+    F --> G[API FastAPI]
+    G --> H[Frontend React<br/>Vite · React Router]
 ```
 
-Remplir `.env` (déjà présent, non commité) :
-- `API_FOOTBALL_KEY` — déjà configurée
-- `GEMINI_API_KEY` — à renseigner pour activer `/matches/{id}/report` et `/matches/{id}/player/{id}`
+Chaque étage est mis en cache : une réponse API-Football n'est téléchargée qu'une fois (`data/raw/`),
+un rapport LLM n'est généré qu'une fois (`data/processed/`), et les scores calculés sont persistés en
+SQLite pour alimenter l'historique et les fiches joueur/équipe sans recalcul.
 
-## Frontend
+### Organisation du code
 
-```powershell
-cd frontend
-npm install
-npm run dev
-```
-
-Sert sur http://localhost:5173, consomme l'API sur http://localhost:8000. App multi-pages
-(React Router) avec menu latéral : Accueil, Classement, Comparateur, + fiches Joueur/Équipe/Match.
+| Dossier | Rôle |
+|---|---|
+| `ml/` | Ingestion API-Football, schémas, moteur de scoring, pondérations par poste |
+| `llm/` | Client Gemini, templates de prompts, génération des rapports |
+| `persistence/` | Modèles SQLAlchemy, session, repository |
+| `api/` | Application FastAPI et routers |
+| `frontend/` | SPA React (Vite, React Router) |
+| `tests/` | Tests pytest (ingestion, scoring, LLM, persistence, rapports) |
 
 ## Routes API
 
@@ -38,9 +79,68 @@ Sert sur http://localhost:5173, consomme l'API sur http://localhost:8000. App mu
 | `GET /matches/{fixture_id}/report` | Rapport complet (MOTM, joueurs, tactique) — nécessite `GEMINI_API_KEY` |
 | `GET /players/{player_id}/history` | Carrière d'un joueur agrégée sur tous les matchs analysés (DB uniquement) |
 | `GET /teams/{team_id}/history` | Effectif + matchs d'une équipe agrégés (DB uniquement) |
+| `GET /search/teams` | Recherche d'équipes par nom |
+| `GET /search/teams/{team_id}/fixtures` | Matchs disponibles pour une équipe |
+| `GET /search/players` | Recherche de joueurs par nom |
 | `GET /standings?league_id=&season=` | Classement d'une ligue (cache fichier) |
 | `GET /standings/leagues` | Ligues supportées pour le sélecteur de classement |
 
-Les réponses API-Football sont cachées dans `data/raw/`, les rapports LLM dans `data/processed/`,
-et les résultats calculés (scores, rapports) sont persistés dans `data/matchiq.db` (SQLite) pour
-l'historique et les fiches joueur/équipe — aucun appel n'est répété une fois caché.
+Documentation interactive générée par FastAPI sur http://localhost:8000/docs.
+
+## Installation
+
+### Prérequis
+
+- Python 3.12+ (3.11 fonctionne aussi)
+- Node.js 22+
+- Une clé [API-Football](https://www.api-football.com/) (offre gratuite disponible)
+- Une clé [Gemini API](https://ai.google.dev/) pour la génération de rapports (optionnelle : le reste
+  de l'application fonctionne sans)
+
+### Configuration
+
+Copier `.env.example` vers `.env` à la racine et renseigner les clés :
+
+```powershell
+copy .env.example .env
+```
+
+### Backend
+
+```powershell
+python -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+.\.venv\Scripts\python.exe -m pytest tests/
+.\.venv\Scripts\python.exe -m uvicorn api.main:app --reload --port 8000
+```
+
+### Frontend
+
+```powershell
+cd frontend
+npm install
+npm run dev
+```
+
+Le frontend sert sur http://localhost:5173 et consomme l'API sur http://localhost:8000. Application
+multi-pages (React Router) avec menu latéral : Accueil, Classement, Comparateur, et fiches
+Joueur / Équipe / Match.
+
+Sous Windows, `start.bat` lance backend et frontend en une commande.
+
+## Tests
+
+```powershell
+.\.venv\Scripts\python.exe -m pytest tests/ -v
+```
+
+Les tests couvrent l'ingestion (avec appels réseau mockés), le moteur de scoring, le client LLM, la
+couche de persistance et la génération de rapports. Ils sont exécutés à chaque push via GitHub
+Actions (`.github/workflows/tests.yml`), qui vérifie aussi le build du frontend.
+
+## Licence
+
+Distribué sous licence MIT — voir [LICENSE](LICENSE).
+
+Les données de match proviennent d'[API-Football](https://www.api-football.com/) et restent soumises
+à leurs conditions d'utilisation.
