@@ -105,6 +105,13 @@ Copier `.env.example` vers `.env` à la racine et renseigner les clés :
 copy .env.example .env
 ```
 
+Activer le hook `pre-commit` qui bloque toute fuite de secret (la configuration des hooks n'est
+pas clonée avec le dépôt, cette commande est donc à lancer une fois après le `git clone`) :
+
+```powershell
+git config core.hooksPath .githooks
+```
+
 ### Backend
 
 ```powershell
@@ -137,6 +144,20 @@ Sous Windows, `start.bat` lance backend et frontend en une commande.
 Les tests couvrent l'ingestion (avec appels réseau mockés), le moteur de scoring, le client LLM, la
 couche de persistance et la génération de rapports. Ils sont exécutés à chaque push via GitHub
 Actions (`.github/workflows/tests.yml`), qui vérifie aussi le build du frontend.
+
+## Sécurité
+
+Aucun secret ne se trouve dans le dépôt ni dans son historique. La protection est en couches :
+
+| Couche | Mécanisme |
+|---|---|
+| `.gitignore` | Exclut tout fichier d'environnement, clé privée ou base locale ; seul `.env.example` (sans valeurs) fait exception |
+| Hook `pre-commit` | `.githooks/pre-commit` refuse un commit contenant un fichier `.env`, une clé d'API reconnue, ou un `.env.example` renseigné |
+| CI | Un job `gitleaks` scanne l'intégralité de l'historique à chaque push |
+| GitHub | Secret scanning et push protection activés : un push contenant un secret est rejeté côté serveur |
+
+Les clés d'API se chargent exclusivement depuis `.env` via [`config.py`](config.py), jamais en dur
+dans le code.
 
 ## Licence
 
