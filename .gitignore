@@ -1,18 +1,39 @@
+# --- Secrets : ne jamais commiter ---
+# Regle large volontairement : tout fichier d'environnement est exclu,
+# seul .env.example (sans valeurs) fait exception.
 .env
 .env.*
+*.env
 !.env.example
+secrets.*
+credentials.*
+service-account*.json
+*.pem
+*.key
+*.p12
+*.pfx
+
+# --- Python ---
 __pycache__/
 *.pyc
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+
+# --- Donnees applicatives (cache API + base locale) ---
 data/raw/*
 !data/raw/.gitkeep
 data/processed/*
 !data/processed/.gitkeep
 data/matchiq.db
+*.db
+*.sqlite3
+
+# --- Frontend ---
 node_modules/
 frontend/dist/
 frontend/build/
-.venv/
-venv/
-*.egg-info/
-.pytest_cache/
+
+# --- Outillage local ---
 .claude/

@@ -1,0 +1,62 @@
+#!/bin/sh
+# Garde-fou local : bloque un commit qui contiendrait des secrets.
+# Active via : git config core.hooksPath .githooks
+#
+# Deux controles :
+#   1. aucun fichier d'environnement ne doit etre stage (sauf .env.example)
+#   2. aucun contenu stage ne doit ressembler a une cle d'API connue
+
+RED=$(printf '\033[31m')
+YELLOW=$(printf '\033[33m')
+RESET=$(printf '\033[0m')
+
+fail() {
+    echo "${RED}COMMIT BLOQUE${RESET} : $1" >&2
+    echo "" >&2
+    echo "${YELLOW}Si c'est un faux positif, contourne avec :${RESET} git commit --no-verify" >&2
+    exit 1
+}
+
+staged=$(git diff --cached --name-only --diff-filter=ACM)
+[ -z "$staged" ] && exit 0
+
+# --- 1. Fichiers d'environnement ---
+env_files=$(echo "$staged" | grep -E '(^|/)\.env($|\.)' | grep -v '\.env\.example$')
+if [ -n "$env_files" ]; then
+    fail "fichier(s) d'environnement stage(s) :
+$(echo "$env_files" | sed 's/^/  - /')"
+fi
+
+# --- 2. Cles d'API dans le contenu stage ---
+# Prefixes de fournisseurs reels. On ignore .env.example (valeurs vides par design).
+patterns='AIza[0-9A-Za-z_-]{30,}|sk-[A-Za-z0-9]{32,}|gh[pousr]_[A-Za-z0-9]{30,}|xox[baprs]-[A-Za-z0-9-]{20,}|AKIA[0-9A-Z]{16}|-----BEGIN [A-Z ]*PRIVATE KEY-----'
+
+hits=""
+for f in $staged; do
+    case "$f" in
+        .env.example|*/.env.example|*.lock|*package-lock.json) continue ;;
+    esac
+    match=$(git show ":$f" 2>/dev/null | grep -nEo "$patterns" | head -3)
+    if [ -n "$match" ]; then
+        hits="$hits
+  - $f : $(echo "$match" | head -1 | cut -c1-40)..."
+    fi
+done
+
+if [ -n "$hits" ]; then
+    fail "cle(s) d'API detectee(s) dans le contenu stage :$hits"
+fi
+
+# --- 3. Valeurs non vides dans .env.example ---
+if echo "$staged" | grep -q '\.env\.example$'; then
+    filled=$(git show ":.env.example" 2>/dev/null \
+        | grep -E '^[A-Z_]+=.+' \
+        | grep -vE '^(API_FOOTBALL_BASE_URL|DATABASE_URL)=')
+    if [ -n "$filled" ]; then
+        fail ".env.example contient des valeurs renseignees :
+$(echo "$filled" | sed -E 's/=(.{0,4}).*/=\1***/' | sed 's/^/  - /')
+Il doit rester vide de tout secret."
+    fi
+fi
+
+exit 0
