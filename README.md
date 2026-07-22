@@ -26,18 +26,30 @@ analyste — et une démonstration de bout en bout d'un pipeline *ingestion → 
 
 ## Aperçu
 
-<!-- Captures à ajouter dans assets/screenshots/, puis décommenter ce bloc :
+*Captures réelles de l'application — Arsenal 2–1 Nottingham Forest, Premier League 2023/24.*
 
-| Vue | Capture |
-|---|---|
-| Dashboard — derniers matchs analysés | ![Dashboard](assets/screenshots/dashboard.png) |
-| Comparateur équipe vs équipe | ![Comparateur](assets/screenshots/compare.png) |
-| Fiche joueur — score composite et radar chart | ![Fiche joueur](assets/screenshots/player.png) |
-| Rapport de match généré par le LLM | ![Rapport](assets/screenshots/report.png) |
+**Rapport de match** — score, homme du match calculé par le moteur de scoring, et formations
+tactiques reconstruites depuis les compositions officielles.
 
--->
+![Rapport de match](assets/screenshots/report.png)
 
-Captures détaillées de l'interface à venir.
+**Interprétation LLM** — le rapport est rédigé par Gemini à partir des scores calculés, en citant
+les statistiques qui justifient la note.
+
+![Analyse IA](assets/screenshots/ai_report.png)
+
+**Classement du match et profil joueur** — chaque joueur reçoit un score composite pondéré selon son
+poste, détaillé en radar chart.
+
+![Classement et fiche joueur](assets/screenshots/player.png)
+
+**Comparateur** — superposition des profils statistiques de deux joueurs déjà analysés.
+
+![Comparateur](assets/screenshots/compare.png)
+
+**Accueil** — historique des matchs analysés et recherche par équipe, joueur ou identifiant de match.
+
+![Accueil](assets/screenshots/dashboard.png)
 
 ## Architecture
 
