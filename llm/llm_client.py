@@ -1,7 +1,7 @@
 """Wrapper minimal autour du SDK Google Gemini (google-genai) pour la génération de rapports."""
 from google import genai
 
-from config import require_gemini_key
+from config import DEMO_MODE, require_gemini_key
 from llm.prompt_templates import SYSTEM_PROMPT
 
 DEFAULT_MODEL = "gemini-3.5-flash"
@@ -28,6 +28,14 @@ def generate_report(prompt: str, model: str = DEFAULT_MODEL) -> str:
     (dont certaines dans des modules privés `_gaos`), donc on détecte le 429
     par attribut (`status_code`/`code`) plutôt que par import de classe privée.
     """
+    if DEMO_MODE:
+        # RuntimeError est déjà traduit en 503 par les routers /report et
+        # /player : le rapport non caché est simplement indisponible.
+        raise RuntimeError(
+            "Mode démo : seuls les rapports déjà générés sont consultables. "
+            "La génération LLM est désactivée sur cette instance publique."
+        )
+
     client = _get_client()
     try:
         interaction = client.interactions.create(

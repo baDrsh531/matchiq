@@ -1,0 +1,28 @@
+# Déploiement de la démo publique sur Render (offre gratuite).
+#
+# L'instance tourne en DEMO_MODE : elle ne sert que le contenu déjà présent
+# dans data/ (cache API, rapports LLM, base SQLite) et refuse tout appel
+# sortant. Aucune clé n'est donc nécessaire, aucun quota consommable, aucune
+# facturation possible quoi que fasse un visiteur.
+services:
+  - type: web
+    name: matchiq-demo
+    runtime: python
+    plan: free
+    region: frankfurt
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn api.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      - key: DEMO_MODE
+        value: "true"
+      - key: PYTHON_VERSION
+        value: "3.12.0"
+      # Origine du frontend déployé. Sans elle, le navigateur bloque tous les
+      # appels du front vers cette API. À renseigner après le déploiement Vercel.
+      - key: CORS_ORIGINS
+        sync: false
+      # Base SQLite embarquée dans le dépôt : le disque de l'offre gratuite
+      # est éphémère, mais la démo étant en lecture seule cela n'a aucun impact.
+      - key: DATABASE_URL
+        value: sqlite:///data/matchiq.db

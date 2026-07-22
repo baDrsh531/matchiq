@@ -11,7 +11,7 @@ from typing import Any
 
 import requests
 
-from config import API_FOOTBALL_BASE_URL, DATA_RAW_DIR, require_api_football_key
+from config import API_FOOTBALL_BASE_URL, DATA_RAW_DIR, DEMO_MODE, require_api_football_key
 
 logger = logging.getLogger("matchiq.ingestion")
 logging.basicConfig(level=logging.INFO)
@@ -27,12 +27,33 @@ class RateLimitError(ApiFootballError):
     """Quota de requêtes journalier dépassé (HTTP 429)."""
 
 
+class DemoModeError(ApiFootballError):
+    """Appel sortant tenté alors que l'instance tourne en mode démo.
+
+    Hérite d'ApiFootballError pour que les routers la traduisent déjà en 503
+    sans modification : une donnée absente du cache est indisponible, ce qui
+    est exactement la sémantique attendue côté client.
+    """
+
+
 def _headers() -> dict[str, str]:
     return {"x-apisports-key": require_api_football_key()}
 
 
 def _get(endpoint: str, params: dict[str, Any]) -> dict:
-    """Appelle un endpoint de l'API-Football et gère erreurs + quota."""
+    """Appelle un endpoint de l'API-Football et gère erreurs + quota.
+
+    Point de passage unique vers l'extérieur : c'est ici, et nulle part
+    ailleurs, que le mode démo coupe le réseau. Les fonctions appelantes
+    lisent leur cache disque AVANT d'arriver ici, donc tout ce qui est déjà
+    téléchargé reste servi normalement.
+    """
+    if DEMO_MODE:
+        raise DemoModeError(
+            f"Mode démo : donnée absente du cache local ({endpoint}). "
+            "Cette instance publique ne sert que les matchs déjà analysés."
+        )
+
     url = f"{API_FOOTBALL_BASE_URL.rstrip('/')}/{endpoint.lstrip('/')}"
     try:
         resp = requests.get(url, headers=_headers(), params=params, timeout=TIMEOUT_SECONDS)

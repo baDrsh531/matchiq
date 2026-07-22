@@ -26,7 +26,8 @@ analyste — et une démonstration de bout en bout d'un pipeline *ingestion → 
 
 ## Aperçu
 
-*Captures réelles de l'application — Arsenal 2–1 Nottingham Forest, Premier League 2023/24.*
+*Captures réelles de l'application — Real Madrid 3–1 PSG, huitième de finale retour de Ligue des
+Champions 2021/22 (le triplé de Benzema en dix-sept minutes).*
 
 **Rapport de match** — score, homme du match calculé par le moteur de scoring, et formations
 tactiques reconstruites depuis les compositions officielles.
@@ -167,6 +168,28 @@ ni quota consommé, ni clé requise pour les exécuter.
 
 Ils sont lancés à chaque push via GitHub Actions (`.github/workflows/tests.yml`), qui vérifie aussi
 le build du frontend et scanne l'historique à la recherche de secrets.
+
+## Démo publique
+
+L'application peut être déployée en **mode démo** : elle ne sert alors que le contenu figé de
+`demo_data/` (cache API, rapports LLM, base SQLite) et refuse tout appel sortant vers API-Football
+ou Gemini.
+
+```powershell
+$env:DEMO_MODE="true"; $env:DATA_DIR="demo_data"
+$env:DATABASE_URL="sqlite:///demo_data/matchiq.db"
+.\.venv\Scripts\python.exe -m uvicorn api.main:app --port 8000
+```
+
+Conséquence : aucune clé n'est nécessaire, aucun quota n'est consommable et aucune facturation
+n'est possible, quoi que fasse un visiteur. Le verrou est unique et testé — `_get()` côté
+API-Football, `generate_report()` côté LLM — et `tests/test_demo_mode.py` vérifie qu'aucun chemin
+ne le contourne, y compris qu'aucun client Gemini n'est instancié.
+
+`GET /health` renvoie `demo_mode` pour qu'un client sache si l'instance est en lecture seule.
+
+La procédure de déploiement complète (Render + Vercel, CORS, rafraîchissement du jeu de données)
+est décrite dans [`.claude/skills/deploy-demo/SKILL.md`](.claude/skills/deploy-demo/SKILL.md).
 
 ## Sécurité
 
