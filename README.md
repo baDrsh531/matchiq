@@ -157,9 +157,16 @@ Sous Windows, `start.bat` lance backend et frontend en une commande.
 .\.venv\Scripts\python.exe -m pytest tests/ -v
 ```
 
-Les tests couvrent l'ingestion (avec appels réseau mockés), le moteur de scoring, le client LLM, la
-couche de persistance et la génération de rapports. Ils sont exécutés à chaque push via GitHub
-Actions (`.github/workflows/tests.yml`), qui vérifie aussi le build du frontend.
+**64 tests, 84 % de couverture.** Ils couvrent l'ingestion (appels réseau mockés), le moteur de
+scoring, le client LLM, la couche de persistance, la génération de rapports, et l'intégralité des
+routes HTTP — y compris les codes d'erreur (404 sur ressource inconnue, 503 sur quota API dépassé
+ou clé LLM absente, 400 sur requête invalide).
+
+Les tests d'intégration API tournent sur une base SQLite en mémoire et sans aucun accès réseau :
+ni quota consommé, ni clé requise pour les exécuter.
+
+Ils sont lancés à chaque push via GitHub Actions (`.github/workflows/tests.yml`), qui vérifie aussi
+le build du frontend et scanne l'historique à la recherche de secrets.
 
 ## Sécurité
 
