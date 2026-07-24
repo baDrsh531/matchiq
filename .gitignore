@@ -48,10 +48,6 @@ frontend/dist/
 frontend/build/
 
 # --- Outillage local ---
-# .claude/ contient des reglages de session propres a la machine, sauf
-# skills/ : ce sont des procedures projet (deploiement), versionnees a ce titre.
-.claude/*
-!.claude/skills/
 .history/
 .vscode/
 .idea/

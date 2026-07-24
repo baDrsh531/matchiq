@@ -189,7 +189,7 @@ ne le contourne, y compris qu'aucun client Gemini n'est instancié.
 `GET /health` renvoie `demo_mode` pour qu'un client sache si l'instance est en lecture seule.
 
 La procédure de déploiement complète (Render + Vercel, CORS, rafraîchissement du jeu de données)
-est décrite dans [`.claude/skills/deploy-demo/SKILL.md`](.claude/skills/deploy-demo/SKILL.md).
+est décrite dans [`docs/deploy-demo.md`](docs/deploy-demo.md).
 
 ## Sécurité
 
