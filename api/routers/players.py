@@ -4,6 +4,7 @@ from fastapi import APIRouter, HTTPException
 
 from llm.report_generator import get_player_analysis
 from ml.ingestion import ApiFootballError, RateLimitError, build_match_summary, fetch_fixture
+from ml.insights import match_insights
 from ml.scoring_engine import rank_players
 from persistence.database import SessionLocal
 from persistence.repository import save_match_snapshot
@@ -49,7 +50,7 @@ def get_players(fixture_id: int):
         raise HTTPException(status_code=500, detail=f"Erreur serveur inattendue: {exc}") from exc
 
     _persist_snapshot(fixture_id, players)
-    return {"fixture_id": fixture_id, "players": players}
+    return {"fixture_id": fixture_id, "players": players, "insights": match_insights(players)}
 
 
 @router.get("/{fixture_id}/player/{player_id}")

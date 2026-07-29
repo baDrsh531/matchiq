@@ -18,6 +18,7 @@ export default function MatchPage() {
 
   const [match, setMatch] = useState(null);
   const [players, setPlayers] = useState([]);
+  const [insights, setInsights] = useState([]);
   const [selectedPlayerId, setSelectedPlayerId] = useState(null);
   const [status, setStatus] = useState("loading"); // loading | error | done
   const [errorMessage, setErrorMessage] = useState("");
@@ -36,6 +37,7 @@ export default function MatchPage() {
         if (cancelled) return;
         setMatch(matchData);
         setPlayers(playersData.players);
+        setInsights(playersData.insights || []);
         setSelectedPlayerId(playersData.players[0]?.player_id ?? null);
         setStatus("done");
       })
@@ -101,6 +103,26 @@ export default function MatchPage() {
               )}
             </Link>
           </motion.div>
+
+          {insights.length > 0 && (
+            <div
+              className="panel"
+              style={{ display: "flex", flexDirection: "column", gap: 8 }}
+              aria-label="Faits marquants du match"
+            >
+              <div style={{ fontSize: "0.72rem", letterSpacing: "0.06em", color: "var(--gold)" }}>
+                FAITS MARQUANTS
+              </div>
+              <ul style={{ display: "flex", flexDirection: "column", gap: 6, margin: 0, padding: 0, listStyle: "none" }}>
+                {insights.map((text) => (
+                  <li key={text} style={{ display: "flex", gap: 8, alignItems: "baseline" }}>
+                    <span style={{ color: "var(--gold)", flexShrink: 0 }}>▸</span>
+                    <span style={{ fontSize: "0.9rem" }}>{text}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
 
           <MOTMCard player={motm} />
           <div style={{ display: "flex", justifyContent: "flex-end" }}>

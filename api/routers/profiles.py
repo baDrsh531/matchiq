@@ -4,6 +4,7 @@ elles ne couvrent que les matchs déjà analysés via /matches/{id}/players.
 """
 from fastapi import APIRouter, HTTPException
 
+from ml.insights import form_summary
 from persistence.database import SessionLocal
 from persistence.repository import get_player_history, get_team_history
 
@@ -26,6 +27,7 @@ def get_player_profile(player_id: int):
                 "Analyse d'abord un match où il a joué via /matches/{fixture_id}/players."
             ),
         )
+    history["form"] = form_summary(history["matches"])
     return history
 
 

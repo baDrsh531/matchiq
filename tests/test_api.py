@@ -176,6 +176,7 @@ def test_get_players_returns_ranked_list(client, monkeypatch):
     body = r.json()
     assert body["fixture_id"] == 1035038
     assert [p["name"] for p in body["players"]] == ["Thomas Partey", "Saka"]
+    assert isinstance(body["insights"], list)  # observations automatiques (Phase 3)
 
 
 def test_get_players_persists_snapshot_for_history(client, monkeypatch):
@@ -342,7 +343,9 @@ def test_player_history_aggregates_after_analysis(client, api_db):
 
     r = client.get("/players/1/history")
     assert r.status_code == 200
-    assert r.json()["matches_played"] == 1
+    body = r.json()
+    assert body["matches_played"] == 1
+    assert body["form"]["trend"] == "single"  # lecture de forme (Phase 3)
 
 
 def test_team_history_returns_404_when_unknown(client):

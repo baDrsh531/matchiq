@@ -19,6 +19,41 @@ const SILHOUETTE =
     `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" fill="#171f2b"/><circle cx="32" cy="24" r="12" fill="#2a3444"/><path d="M10 58c0-14 10-22 22-22s22 8 22 22" fill="#2a3444"/></svg>`
   );
 
+const TREND_COLOR = {
+  up: "var(--green)",
+  down: "var(--red)",
+  stable: "var(--gold)",
+  single: "var(--text-dim)",
+};
+const TREND_ARROW = { up: "↗", down: "↘", stable: "→", single: "·" };
+
+function FormSummary({ form }) {
+  const color = TREND_COLOR[form.trend] || "var(--text-dim)";
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+      <span
+        style={{
+          display: "inline-flex",
+          alignItems: "center",
+          gap: 6,
+          color,
+          fontWeight: 600,
+          fontSize: "0.85rem",
+        }}
+      >
+        <span aria-hidden="true">{TREND_ARROW[form.trend]}</span>
+        {form.label}
+      </span>
+      {form.best && (
+        <span style={{ color: "var(--text-dim)", fontSize: "0.78rem" }}>
+          Meilleur : {form.best.score}
+          {form.best.opponent ? ` vs ${form.best.opponent}` : ""} · {form.consistency}
+        </span>
+      )}
+    </div>
+  );
+}
+
 export default function PlayerProfilePage() {
   const { playerId } = useParams();
   const [history, setHistory] = useState(null);
@@ -102,7 +137,21 @@ export default function PlayerProfilePage() {
           </div>
 
           <div className="panel">
-            <h3 style={{ marginBottom: 14 }}>Forme (score composite par match)</h3>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "baseline",
+                flexWrap: "wrap",
+                gap: 8,
+                marginBottom: 14,
+              }}
+            >
+              <h3>Forme (score composite par match)</h3>
+              {history.form && (
+                <FormSummary form={history.form} />
+              )}
+            </div>
             <div style={{ height: 220 }}>
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={history.matches}>
