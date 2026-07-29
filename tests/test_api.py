@@ -15,13 +15,22 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
 from api import main
-from api.routers import leaderboard, matches, players, profiles, reports, search, standings
+from api.routers import (
+    compare,
+    leaderboard,
+    matches,
+    players,
+    profiles,
+    reports,
+    search,
+    standings,
+)
 from ml.ingestion import ApiFootballError, RateLimitError
 from persistence.database import Base
 from persistence.repository import save_match_snapshot
 
 # Les modules qui ouvrent eux-mêmes une session
-_ROUTERS_WITH_DB = (matches, players, profiles, reports, search, leaderboard)
+_ROUTERS_WITH_DB = (matches, players, profiles, reports, search, leaderboard, compare)
 
 
 @pytest.fixture
@@ -558,3 +567,28 @@ def test_team_fixtures_threads_season(client, monkeypatch):
     )
     client.get("/search/teams/42/fixtures", params={"season": 2022})
     assert seen == {"team": 42, "season": 2022}
+
+
+# --------------------------------------------------------------------------
+# /compare/matches — comparateur de matchs (fonctionnalité)
+# --------------------------------------------------------------------------
+
+def test_compare_matches_returns_common_players(client, api_db):
+    session = api_db()
+    save_match_snapshot(session, _match_info(), [_player(1, name="Star", score=9.0)])
+    save_match_snapshot(session, _match_info(fixture_id=2000000), [_player(1, name="Star", score=7.0)])
+    session.close()
+
+    r = client.get("/compare/matches", params={"a": 1035038, "b": 2000000})
+    assert r.status_code == 200
+    body = r.json()
+    assert body["match_a"]["fixture_id"] == 1035038
+    assert body["common_players"][0]["player_id"] == 1
+    assert body["common_players"][0]["delta"] == -2.0
+
+
+def test_compare_matches_missing_match_returns_404(client, api_db):
+    session = api_db()
+    save_match_snapshot(session, _match_info(), [_player(1)])
+    session.close()
+    assert client.get("/compare/matches", params={"a": 1035038, "b": 999}).status_code == 404

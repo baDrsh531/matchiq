@@ -7,6 +7,7 @@ from sqlalchemy.orm import sessionmaker
 from persistence.database import Base
 from persistence.repository import (
     available_positions,
+    compare_matches,
     get_player_history,
     get_team_history,
     list_matches,
@@ -218,3 +219,25 @@ def test_top_performances_respects_limit(session):
     players = [{**_player(i, name=f"P{i}", score=float(i)), "position": "Midfielder"} for i in range(1, 6)]
     save_match_snapshot(session, _match_info(), players)
     assert len(top_performances(session, limit=3)) == 3
+
+
+# ── Comparateur de matchs (compare_matches) ─────────────────────────────────
+
+def test_compare_matches_cards_and_common_players(session):
+    save_match_snapshot(session, _match_info(), [_player(1, name="Star", score=9.0), _player(2, name="OnlyA", score=6.0)])
+    save_match_snapshot(session, _match_info_2(), [_player(1, name="Star", score=7.0), _player(3, name="OnlyB", score=5.0)])
+
+    res = compare_matches(session, 1035038, 2000000)
+    assert res["match_a"]["fixture_id"] == 1035038
+    assert res["match_a"]["motm"]["name"] == "Star"
+    assert res["match_b"]["goals"] == {"home": 1, "away": 1}
+
+    common = res["common_players"]
+    assert [c["player_id"] for c in common] == [1]  # seul le joueur commun aux deux
+    assert common[0]["score_a"] == 9.0 and common[0]["score_b"] == 7.0
+    assert common[0]["delta"] == -2.0  # note en baisse d'un match à l'autre
+
+
+def test_compare_matches_none_when_a_match_is_missing(session):
+    save_match_snapshot(session, _match_info(), [_player(1)])
+    assert compare_matches(session, 1035038, 999999) is None

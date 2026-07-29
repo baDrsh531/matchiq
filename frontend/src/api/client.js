@@ -56,4 +56,7 @@ export const searchPlayers = (query) =>
 export const getLeaderboard = (position, limit = 20) =>
   api.get("/leaderboard", { params: { position, limit } }).then((res) => res.data);
 
+export const getMatchComparison = (a, b) =>
+  api.get("/compare/matches", { params: { a, b } }).then((res) => res.data);
+
 export default api;

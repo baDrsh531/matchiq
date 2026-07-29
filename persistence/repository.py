@@ -271,6 +271,68 @@ def top_performances(session: Session, limit: int = 20, position: str | None = N
     return result
 
 
+def _match_card(session: Session, fixture_id: int) -> dict | None:
+    """Résumé d'un match analysé (pour le comparateur), avec les scores joueurs."""
+    match = session.get(MatchRecord, fixture_id)
+    if match is None:
+        return None
+    rows = (
+        session.query(PlayerScoreRecord)
+        .filter(PlayerScoreRecord.fixture_id == fixture_id)
+        .order_by(PlayerScoreRecord.composite_score.desc())
+        .all()
+    )
+    card = {
+        "fixture_id": fixture_id,
+        "date": match.date,
+        "league_name": match.league_name,
+        "home_team": {"id": match.home_team_id, "name": match.home_team_name, "logo": match.home_team_logo},
+        "away_team": {"id": match.away_team_id, "name": match.away_team_name, "logo": match.away_team_logo},
+        "goals": {"home": match.home_goals, "away": match.away_goals},
+        "motm": (
+            {"player_id": rows[0].player_id, "name": rows[0].name, "composite_score": rows[0].composite_score}
+            if rows
+            else None
+        ),
+        "top_players": [
+            {"player_id": r.player_id, "name": r.name, "position": r.position, "composite_score": r.composite_score}
+            for r in rows[:5]
+        ],
+    }
+    return card, {r.player_id: r for r in rows}
+
+
+def compare_matches(session: Session, fixture_a: int, fixture_b: int) -> dict | None:
+    """Compare deux matchs déjà analysés : leurs cartes respectives et les
+    joueurs COMMUNS aux deux (avec l'écart de note d'un match à l'autre).
+    DB uniquement, aucun appel API-Football."""
+    a = _match_card(session, fixture_a)
+    b = _match_card(session, fixture_b)
+    if a is None or b is None:
+        return None
+    card_a, scores_a = a
+    card_b, scores_b = b
+
+    common = []
+    for pid, ra in scores_a.items():
+        rb = scores_b.get(pid)
+        if rb is None:
+            continue
+        common.append(
+            {
+                "player_id": pid,
+                "name": ra.name,
+                "position": ra.position,
+                "photo_url": ra.photo_url,
+                "score_a": ra.composite_score,
+                "score_b": rb.composite_score,
+                "delta": round(rb.composite_score - ra.composite_score, 2),
+            }
+        )
+    common.sort(key=lambda c: c["score_a"], reverse=True)
+    return {"match_a": card_a, "match_b": card_b, "common_players": common}
+
+
 def search_players(session: Session, query: str, limit: int = 20) -> list[dict]:
     """Recherche par nom parmi les joueurs déjà analysés (DB uniquement,
     aucun appel API-Football — complète la recherche d'équipe côté live API)."""

@@ -3,7 +3,16 @@ import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from api.routers import leaderboard, matches, players, profiles, reports, search, standings
+from api.routers import (
+    compare,
+    leaderboard,
+    matches,
+    players,
+    profiles,
+    reports,
+    search,
+    standings,
+)
 from config import DEMO_MODE
 from persistence.database import init_db
 
@@ -35,6 +44,7 @@ app.include_router(profiles.router)
 app.include_router(standings.router)
 app.include_router(search.router)
 app.include_router(leaderboard.router)
+app.include_router(compare.router)
 
 
 @app.get("/health")
