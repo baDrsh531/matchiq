@@ -229,6 +229,48 @@ def list_matches(session: Session, limit: int = 50) -> list[dict]:
     ]
 
 
+def available_positions(session: Session) -> list[str]:
+    """Postes présents dans les performances enregistrées (pour un filtre)."""
+    rows = session.query(PlayerScoreRecord.position).distinct().all()
+    return sorted(r[0] for r in rows if r[0])
+
+
+def top_performances(session: Session, limit: int = 20, position: str | None = None) -> list[dict]:
+    """Palmarès : meilleures performances individuelles (score composite d'un
+    joueur sur un match) parmi tous les matchs analysés. DB uniquement, aucun
+    appel API-Football. Filtrable par poste."""
+    query = session.query(PlayerScoreRecord)
+    if position:
+        query = query.filter(PlayerScoreRecord.position == position)
+    rows = query.order_by(PlayerScoreRecord.composite_score.desc()).limit(limit).all()
+
+    result = []
+    for r in rows:
+        match = session.get(MatchRecord, r.fixture_id)
+        opponent_name = date = None
+        if match:
+            opponent_name = (
+                match.away_team_name if match.home_team_id == r.team_id else match.home_team_name
+            )
+            date = match.date
+        result.append(
+            {
+                "player_id": r.player_id,
+                "name": r.name,
+                "photo_url": r.photo_url,
+                "team_name": r.team_name,
+                "team_logo": r.team_logo,
+                "position": r.position,
+                "composite_score": r.composite_score,
+                "minutes": r.minutes,
+                "fixture_id": r.fixture_id,
+                "opponent_name": opponent_name,
+                "date": date,
+            }
+        )
+    return result
+
+
 def search_players(session: Session, query: str, limit: int = 20) -> list[dict]:
     """Recherche par nom parmi les joueurs déjà analysés (DB uniquement,
     aucun appel API-Football — complète la recherche d'équipe côté live API)."""

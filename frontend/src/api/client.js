@@ -53,4 +53,7 @@ export const getTeamFixtures = (teamId, season = 2023) =>
 export const searchPlayers = (query) =>
   api.get("/search/players", { params: { query } }).then((res) => res.data);
 
+export const getLeaderboard = (position, limit = 20) =>
+  api.get("/leaderboard", { params: { position, limit } }).then((res) => res.data);
+
 export default api;

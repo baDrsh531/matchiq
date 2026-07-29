@@ -6,12 +6,14 @@ from sqlalchemy.orm import sessionmaker
 
 from persistence.database import Base
 from persistence.repository import (
+    available_positions,
     get_player_history,
     get_team_history,
     list_matches,
     save_match_snapshot,
     save_report,
     search_players,
+    top_performances,
 )
 
 
@@ -182,3 +184,37 @@ def test_search_players_deduplicates_across_matches(session):
 def test_search_players_returns_empty_for_no_match(session):
     save_match_snapshot(session, _match_info(), [_player(1, name="Thomas Partey")])
     assert search_players(session, "Ronaldo") == []
+
+
+# ── Palmarès (top_performances / available_positions) ───────────────────────
+
+def test_top_performances_orders_desc_and_resolves_opponent(session):
+    players = [
+        {**_player(1, name="Att", score=9.5), "position": "Attacker"},
+        {**_player(2, name="Def", score=7.0), "position": "Defender"},
+        {**_player(3, name="Mid", score=8.0), "position": "Midfielder"},
+    ]
+    save_match_snapshot(session, _match_info(), players)
+
+    top = top_performances(session, limit=10)
+    assert [p["name"] for p in top] == ["Att", "Mid", "Def"]  # tri décroissant par note
+    assert top[0]["opponent_name"] == "Nottingham Forest"     # adversaire résolu
+    assert top[0]["fixture_id"] == 1035038
+
+
+def test_top_performances_filters_by_position(session):
+    players = [
+        {**_player(1, name="Att", score=9.5), "position": "Attacker"},
+        {**_player(2, name="Def", score=7.0), "position": "Defender"},
+    ]
+    save_match_snapshot(session, _match_info(), players)
+
+    only_def = top_performances(session, position="Defender")
+    assert [p["name"] for p in only_def] == ["Def"]
+    assert set(available_positions(session)) == {"Attacker", "Defender"}
+
+
+def test_top_performances_respects_limit(session):
+    players = [{**_player(i, name=f"P{i}", score=float(i)), "position": "Midfielder"} for i in range(1, 6)]
+    save_match_snapshot(session, _match_info(), players)
+    assert len(top_performances(session, limit=3)) == 3

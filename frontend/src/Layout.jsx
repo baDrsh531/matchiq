@@ -3,6 +3,7 @@ import { NavLink, Outlet, useLocation } from "react-router-dom";
 
 const NAV_ITEMS = [
   { to: "/", label: "Accueil", icon: "🏠", end: true },
+  { to: "/leaderboard", label: "Palmarès", icon: "🥇" },
   { to: "/standings", label: "Classement", icon: "🏆" },
   { to: "/compare", label: "Comparateur", icon: "⚖️" },
 ];

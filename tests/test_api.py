@@ -15,13 +15,13 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
 from api import main
-from api.routers import matches, players, profiles, reports, search, standings
+from api.routers import leaderboard, matches, players, profiles, reports, search, standings
 from ml.ingestion import ApiFootballError, RateLimitError
 from persistence.database import Base
 from persistence.repository import save_match_snapshot
 
 # Les modules qui ouvrent eux-mêmes une session
-_ROUTERS_WITH_DB = (matches, players, profiles, reports, search)
+_ROUTERS_WITH_DB = (matches, players, profiles, reports, search, leaderboard)
 
 
 @pytest.fixture
@@ -516,3 +516,35 @@ def test_report_pdf_demo_or_missing_report_returns_503(client, monkeypatch):
 
     monkeypatch.setattr(reports, "generate_match_report", boom)
     assert client.get("/matches/1035038/report.pdf").status_code == 503
+
+
+# --------------------------------------------------------------------------
+# /leaderboard — palmarès (fonctionnalité)
+# --------------------------------------------------------------------------
+
+def test_leaderboard_empty_by_default(client):
+    r = client.get("/leaderboard")
+    assert r.status_code == 200
+    assert r.json() == {"performances": [], "positions": []}
+
+
+def test_leaderboard_lists_top_performances(client, api_db):
+    session = api_db()
+    save_match_snapshot(session, _match_info(), [_player(1, name="Star", score=9.0), _player(2, name="Sub", score=4.0)])
+    session.close()
+
+    body = client.get("/leaderboard").json()
+    assert [p["name"] for p in body["performances"]] == ["Star", "Sub"]  # trié décroissant
+    assert "Midfielder" in body["positions"]
+
+
+def test_leaderboard_filters_by_position(client, api_db):
+    session = api_db()
+    save_match_snapshot(session, _match_info(), [
+        {**_player(1, name="Att", score=9.0), "position": "Attacker"},
+        {**_player(2, name="Def", score=8.0), "position": "Defender"},
+    ])
+    session.close()
+
+    body = client.get("/leaderboard", params={"position": "Defender"}).json()
+    assert [p["name"] for p in body["performances"]] == ["Def"]
