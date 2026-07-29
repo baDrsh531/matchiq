@@ -9,14 +9,30 @@ const SILHOUETTE =
     `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" fill="#171f2b"/><circle cx="32" cy="24" r="12" fill="#2a3444"/><path d="M10 58c0-14 10-22 22-22s22 8 22 22" fill="#2a3444"/></svg>`
   );
 
+const SEASONS = [2023, 2022, 2021]; // couvertes par le plan gratuit API-Football
+
 export default function SearchBar() {
   const [query, setQuery] = useState("");
   const [teams, setTeams] = useState([]);
   const [players, setPlayers] = useState([]);
   const [selectedTeam, setSelectedTeam] = useState(null);
+  const [season, setSeason] = useState(SEASONS[0]);
   const [fixtures, setFixtures] = useState([]);
   const [fixturesStatus, setFixturesStatus] = useState("idle");
   const navigate = useNavigate();
+
+  const loadFixtures = async (team, seasonYear) => {
+    setFixturesStatus("loading");
+    try {
+      const data = await getTeamFixtures(team.id, seasonYear);
+      // matchs terminés d'abord, du plus récent au plus ancien
+      const sorted = [...data.fixtures].sort((a, b) => (b.date || "").localeCompare(a.date || ""));
+      setFixtures(sorted);
+      setFixturesStatus("done");
+    } catch {
+      setFixturesStatus("error");
+    }
+  };
 
   useEffect(() => {
     if (query.trim().length < 3) {
@@ -37,16 +53,14 @@ export default function SearchBar() {
     return () => clearTimeout(timeout);
   }, [query]);
 
-  const handleSelectTeam = async (team) => {
+  const handleSelectTeam = (team) => {
     setSelectedTeam(team);
-    setFixturesStatus("loading");
-    try {
-      const data = await getTeamFixtures(team.id);
-      setFixtures(data.fixtures);
-      setFixturesStatus("done");
-    } catch {
-      setFixturesStatus("error");
-    }
+    loadFixtures(team, season);
+  };
+
+  const handleSeasonChange = (year) => {
+    setSeason(year);
+    if (selectedTeam) loadFixtures(selectedTeam, year);
   };
 
   const hasResults = teams.length > 0 || players.length > 0;
@@ -145,39 +159,84 @@ export default function SearchBar() {
 
       {selectedTeam && (
         <div className="panel" style={{ marginTop: 12 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10, flexWrap: "wrap" }}>
             <img src={selectedTeam.logo} alt="" style={{ width: 24, height: 24 }} />
             <strong>{selectedTeam.name}</strong>
-            <span style={{ color: "var(--text-dim)", fontSize: "0.8rem" }}>
-              matchs 2023-24
-            </span>
+            <div style={{ display: "flex", gap: 4, marginLeft: "auto" }}>
+              {SEASONS.map((y) => (
+                <button
+                  key={y}
+                  onClick={() => handleSeasonChange(y)}
+                  style={{
+                    padding: "3px 8px",
+                    fontSize: "0.72rem",
+                    borderRadius: 6,
+                    border: "1px solid var(--border)",
+                    background: season === y ? "var(--bg-panel-raised)" : "transparent",
+                    color: season === y ? "var(--gold)" : "var(--text-dim)",
+                    cursor: "pointer",
+                  }}
+                >
+                  {y}–{(y + 1) % 100}
+                </button>
+              ))}
+            </div>
           </div>
           {fixturesStatus === "loading" && <p style={{ color: "var(--text-dim)" }}>Chargement…</p>}
           {fixturesStatus === "error" && (
             <p style={{ color: "var(--red)" }}>Impossible de récupérer les matchs de cette équipe.</p>
           )}
           {fixturesStatus === "done" && (
-            <div style={{ display: "flex", flexDirection: "column", gap: 4, maxHeight: 260, overflowY: "auto" }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 2, maxHeight: 300, overflowY: "auto" }}>
               {fixtures.length === 0 && (
                 <p style={{ color: "var(--text-dim)" }}>Aucun match trouvé pour cette saison.</p>
               )}
-              {fixtures.map((f) => (
-                <button
-                  key={f.fixture_id}
-                  className="result-row"
-                  onClick={() => navigate(`/match/${f.fixture_id}`)}
-                  style={resultButtonStyle}
-                >
-                  <span style={{ flex: 1, textAlign: "left" }}>
-                    {f.home_team.name} vs {f.away_team.name}
-                  </span>
-                  <span className="mono">
-                    {f.goals.home ?? "-"} - {f.goals.away ?? "-"}
-                  </span>
-                </button>
-              ))}
+              {fixtures.map((f) => {
+                const finished = f.status === "FT" || f.status === "AET" || f.status === "PEN";
+                const row = (
+                  <>
+                    <span style={{ color: "var(--text-dim)", fontSize: "0.72rem", width: 74, flexShrink: 0 }}>
+                      {(f.date || "").slice(0, 10)}
+                    </span>
+                    <span style={{ flex: 1, textAlign: "left", minWidth: 0 }}>
+                      {f.home_team.name} <span style={{ color: "var(--text-dim)" }}>vs</span> {f.away_team.name}
+                    </span>
+                    {finished ? (
+                      <span className="mono" style={{ flexShrink: 0 }}>
+                        {f.goals.home ?? "-"} - {f.goals.away ?? "-"}
+                      </span>
+                    ) : (
+                      <span style={{ color: "var(--text-dim)", fontSize: "0.72rem", flexShrink: 0 }}>
+                        à venir
+                      </span>
+                    )}
+                  </>
+                );
+                return finished ? (
+                  <button
+                    key={f.fixture_id}
+                    className="result-row"
+                    onClick={() => navigate(`/match/${f.fixture_id}`)}
+                    style={resultButtonStyle}
+                    title="Analyser ce match"
+                  >
+                    {row}
+                  </button>
+                ) : (
+                  <div
+                    key={f.fixture_id}
+                    style={{ ...resultButtonStyle, cursor: "default", opacity: 0.55 }}
+                    title="Match non joué — pas d'analyse possible"
+                  >
+                    {row}
+                  </div>
+                );
+              })}
             </div>
           )}
+          <p style={{ color: "var(--text-dim)", fontSize: "0.7rem", marginTop: 8 }}>
+            Seuls les matchs terminés sont analysables.
+          </p>
         </div>
       )}
     </div>

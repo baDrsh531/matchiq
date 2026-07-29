@@ -548,3 +548,13 @@ def test_leaderboard_filters_by_position(client, api_db):
 
     body = client.get("/leaderboard", params={"position": "Defender"}).json()
     assert [p["name"] for p in body["performances"]] == ["Def"]
+
+
+def test_team_fixtures_threads_season(client, monkeypatch):
+    seen = {}
+    monkeypatch.setattr(
+        search, "fetch_team_fixtures",
+        lambda tid, season: (seen.update(team=tid, season=season) or []),
+    )
+    client.get("/search/teams/42/fixtures", params={"season": 2022})
+    assert seen == {"team": 42, "season": 2022}
