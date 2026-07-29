@@ -48,10 +48,12 @@ if [ -n "$hits" ]; then
 fi
 
 # --- 3. Valeurs non vides dans .env.example ---
+# Seuls des DÉFAUTS non secrets peuvent être renseignés (URL de base, provider,
+# drapeaux) ; toute clé/jeton doit rester vide.
 if echo "$staged" | grep -q '\.env\.example$'; then
     filled=$(git show ":.env.example" 2>/dev/null \
         | grep -E '^[A-Z_]+=.+' \
-        | grep -vE '^(API_FOOTBALL_BASE_URL|DATABASE_URL)=')
+        | grep -vE '^(API_FOOTBALL_BASE_URL|DATABASE_URL|LLM_PROVIDER|LLM_NO_THINK)=')
     if [ -n "$filled" ]; then
         fail ".env.example contient des valeurs renseignees :
 $(echo "$filled" | sed -E 's/=(.{0,4}).*/=\1***/' | sed 's/^/  - /')

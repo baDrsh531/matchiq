@@ -11,6 +11,19 @@ API_FOOTBALL_KEY = os.getenv("API_FOOTBALL_KEY")
 API_FOOTBALL_BASE_URL = os.getenv("API_FOOTBALL_BASE_URL", "https://v3.football.api-sports.io")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
+# Backend LLM interchangeable. "gemini" (défaut) utilise l'API Google ; "openai"
+# cible tout serveur compatible OpenAI (vLLM, llama.cpp, Ollama, LM Studio, ou
+# l'API OpenAI elle-même) — utile pour un modèle local, hors quota. L'URL et le
+# modèle restent dans .env (jamais commités).
+LLM_PROVIDER = os.getenv("LLM_PROVIDER", "gemini").strip().lower()
+OPENAI_BASE_URL = os.getenv("OPENAI_BASE_URL", "").rstrip("/")
+OPENAI_MODEL = os.getenv("OPENAI_MODEL", "")
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
+# Certains modèles « à raisonnement » (Qwen3, etc.) consomment tout le budget de
+# tokens dans une phase de réflexion et renvoient un contenu vide : on désactive
+# ce mode par défaut côté serveurs qui le supportent (chat_template_kwargs).
+LLM_NO_THINK = os.getenv("LLM_NO_THINK", "true").strip().lower() in {"1", "true", "yes", "on"}
+
 # Mode démo : l'application ne sert QUE les données déjà en cache (data/raw,
 # data/processed, SQLite) et refuse tout appel sortant vers API-Football ou
 # Gemini. Permet d'exposer une instance publique sans clé, sans quota
