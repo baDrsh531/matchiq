@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { askMatch, getReport } from "../api/client";
 
 const SUGGESTIONS = [
@@ -7,11 +7,49 @@ const SUGGESTIONS = [
   "Quel défenseur a le mieux tenu ?",
 ];
 
-function MatchQA({ fixtureId }) {
+function LangToggle({ lang, onChange }) {
+  return (
+    <div
+      role="group"
+      aria-label="Langue de l'analyse IA"
+      style={{ display: "inline-flex", border: "1px solid var(--border)", borderRadius: 8, overflow: "hidden" }}
+    >
+      {["fr", "en"].map((l) => (
+        <button
+          key={l}
+          type="button"
+          aria-pressed={lang === l}
+          onClick={() => onChange(l)}
+          style={{
+            border: 0,
+            cursor: "pointer",
+            padding: "4px 10px",
+            fontSize: "0.72rem",
+            fontWeight: 600,
+            letterSpacing: "0.03em",
+            background: lang === l ? "var(--gold)" : "transparent",
+            color: lang === l ? "#141414" : "var(--text-dim)",
+          }}
+        >
+          {l.toUpperCase()}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function MatchQA({ fixtureId, lang }) {
   const [question, setQuestion] = useState("");
   const [answer, setAnswer] = useState(null);
   const [status, setStatus] = useState("idle"); // idle | loading | error | done
   const [errorMessage, setErrorMessage] = useState("");
+
+  // La réponse est dans une langue donnée : si on change de langue, on la retire
+  // pour ne pas afficher une réponse FR sous un libellé EN (et inversement).
+  useEffect(() => {
+    setAnswer(null);
+    setStatus("idle");
+  }, [lang]);
 
   const ask = async (q) => {
     const text = (q ?? question).trim();
@@ -20,7 +58,7 @@ function MatchQA({ fixtureId }) {
     setStatus("loading");
     setAnswer(null);
     try {
-      const data = await askMatch(fixtureId, text);
+      const data = await askMatch(fixtureId, text, lang);
       setAnswer(data.answer);
       setStatus("done");
     } catch (err) {
@@ -124,14 +162,15 @@ function MatchQA({ fixtureId }) {
 }
 
 export default function AIPanel({ fixtureId }) {
+  const [lang, setLang] = useState("fr");
   const [report, setReport] = useState(null);
   const [status, setStatus] = useState("idle"); // idle | loading | error | done
   const [errorMessage, setErrorMessage] = useState("");
 
-  const loadReport = async () => {
+  const loadReport = async (targetLang = lang) => {
     setStatus("loading");
     try {
-      const data = await getReport(fixtureId);
+      const data = await getReport(fixtureId, false, targetLang);
       setReport(data);
       setStatus("done");
     } catch (err) {
@@ -142,15 +181,26 @@ export default function AIPanel({ fixtureId }) {
     }
   };
 
+  // Si un rapport est déjà affiché et qu'on change de langue, on le recharge
+  // dans la nouvelle langue (mis en cache par langue côté serveur, donc rapide).
+  useEffect(() => {
+    if (report) loadReport(lang);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lang]);
+
   return (
     <div className="panel">
-      <MatchQA fixtureId={fixtureId} />
+      <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 12 }}>
+        <LangToggle lang={lang} onChange={setLang} />
+      </div>
+
+      <MatchQA fixtureId={fixtureId} lang={lang} />
 
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <h3>Analyse IA</h3>
         {status !== "loading" && (
           <button
-            onClick={loadReport}
+            onClick={() => loadReport()}
             style={{
               background: "var(--bg-panel-raised)",
               border: "1px solid var(--border)",

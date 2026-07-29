@@ -12,15 +12,19 @@ logger = logging.getLogger("matchiq.api")
 router = APIRouter(prefix="/matches", tags=["reports"])
 
 
+def _lang(value: str) -> str:
+    return value if value in ("fr", "en") else "fr"
+
+
 @router.get("/{fixture_id}/report")
-def get_report(fixture_id: int, refresh: bool = False):
+def get_report(fixture_id: int, refresh: bool = False, lang: str = "fr"):
     """Rapport complet généré par le LLM (MOTM, analyses joueurs, tactique).
 
-    Le rapport est mis en cache après la première génération. Passer
-    ?refresh=true pour forcer une régénération (consomme des tokens LLM).
+    Le rapport est mis en cache par langue après la première génération. Passer
+    ?lang=en pour l'anglais, ?refresh=true pour forcer une régénération.
     """
     try:
-        report = generate_match_report(fixture_id, force_refresh=refresh)
+        report = generate_match_report(fixture_id, force_refresh=refresh, lang=_lang(lang))
     except ValueError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except RateLimitError as exc:
@@ -47,19 +51,19 @@ def get_report(fixture_id: int, refresh: bool = False):
 
 
 @router.get("/{fixture_id}/ask")
-def ask_match(fixture_id: int, q: str, refresh: bool = False):
+def ask_match(fixture_id: int, q: str, refresh: bool = False, lang: str = "fr"):
     """Question en langage naturel sur un match : la réponse est fondée
     uniquement sur les scores/stats déjà calculés (LLM ancré, anti-hallucination).
 
-    La réponse est mise en cache par question ; reposer la même n'appelle pas
-    à nouveau le LLM.
+    La réponse est mise en cache par question et par langue ; reposer la même
+    n'appelle pas à nouveau le LLM.
     """
     question = (q or "").strip()
     if len(question) < 3:
         raise HTTPException(status_code=400, detail="La question doit faire au moins 3 caractères.")
 
     try:
-        return answer_match_question(fixture_id, question, force_refresh=refresh)
+        return answer_match_question(fixture_id, question, force_refresh=refresh, lang=_lang(lang))
     except ValueError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except RateLimitError as exc:

@@ -95,7 +95,7 @@ def test_generate_match_report_makes_exactly_three_llm_calls(tmp_path, monkeypat
 
     calls = []
 
-    def fake_generate_report(prompt):
+    def fake_generate_report(prompt, lang="fr"):
         calls.append(prompt)
         if len(calls) == 1:
             return "Rapport MOTM."
@@ -154,7 +154,7 @@ def test_generate_match_report_enriches_players_with_events_and_form(tmp_path, m
 
     captured = {}
 
-    def fake_generate_report(prompt):
+    def fake_generate_report(prompt, lang="fr"):
         if "player_events" in prompt or "match_events" in prompt or "recent_matches" in prompt:
             captured["batch_prompt"] = prompt
         return "[[1]]\nAnalyse 1.\n\n[[3]]\nAnalyse 3." if "Player 1" in prompt else (
@@ -206,7 +206,7 @@ def test_answer_match_question_grounds_prompt_and_caches(tmp_path, monkeypatch):
     _patch_qa_context(monkeypatch, tmp_path)
     calls = {"n": 0}
 
-    def fake_gen(prompt):
+    def fake_gen(prompt, lang="fr"):
         calls["n"] += 1
         # ancrage : les données calculées ET la question sont dans le prompt
         assert "Star" in prompt and "composite_score" in prompt
@@ -238,3 +238,41 @@ def test_normalize_question_is_stable_across_casing_and_spacing():
     c = report_generator._normalize_question("Une autre question")
     assert a == b
     assert a != c
+
+
+# ── Rapports bilingues (Phase 4) ────────────────────────────────────────────
+
+def test_system_prompt_language_directive():
+    from llm import prompt_templates
+    fr = prompt_templates.system_prompt("fr")
+    en = prompt_templates.system_prompt("en")
+    assert "français" in fr
+    assert "English" in en
+    # la base anti-hallucination est commune aux deux langues
+    assert "JAMAIS inventer" in fr and "JAMAIS inventer" in en
+
+
+def test_report_cache_path_backward_compatible_for_fr():
+    assert report_generator._report_cache_path(999, "fr").name == "999_report.json"
+    assert report_generator._report_cache_path(999, "en").name == "999_report_en.json"
+    assert report_generator._qa_cache_path(999, "abc", "fr").name == "999_qa_abc.json"
+    assert report_generator._qa_cache_path(999, "abc", "en").name == "999_qa_abc_en.json"
+
+
+def test_answer_match_question_caches_per_language(tmp_path, monkeypatch):
+    _patch_qa_context(monkeypatch, tmp_path)
+    seen = []
+
+    def fake_gen(prompt, lang="fr"):
+        seen.append(lang)
+        return f"answer-{lang}"
+
+    monkeypatch.setattr(report_generator, "generate_report", fake_gen)
+
+    assert report_generator.answer_match_question(999, "Question ?", lang="fr")["answer"] == "answer-fr"
+    assert report_generator.answer_match_question(999, "Question ?", lang="en")["answer"] == "answer-en"
+    assert seen == ["fr", "en"]  # deux langues = deux générations distinctes
+
+    # re-demander en français relit le cache FR : pas de 3ᵉ appel
+    report_generator.answer_match_question(999, "Question ?", lang="fr")
+    assert seen == ["fr", "en"]

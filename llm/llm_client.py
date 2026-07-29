@@ -2,7 +2,7 @@
 from google import genai
 
 from config import DEMO_MODE, require_gemini_key
-from llm.prompt_templates import SYSTEM_PROMPT
+from llm.prompt_templates import system_prompt
 
 DEFAULT_MODEL = "gemini-3.5-flash"
 
@@ -20,8 +20,11 @@ def _get_client() -> genai.Client:
     return _client
 
 
-def generate_report(prompt: str, model: str = DEFAULT_MODEL) -> str:
+def generate_report(prompt: str, model: str = DEFAULT_MODEL, lang: str = "fr") -> str:
     """Envoie un prompt au LLM avec le système strict anti-hallucination et renvoie le texte.
+
+    `lang` ("fr"/"en") choisit la langue de sortie via le prompt système ; les
+    templates métier restent en français (ce sont des instructions).
 
     Toute erreur du SDK google-genai est convertie ici en RuntimeError : le SDK
     expose plusieurs hiérarchies d'exceptions internes selon l'API utilisée
@@ -40,7 +43,7 @@ def generate_report(prompt: str, model: str = DEFAULT_MODEL) -> str:
     try:
         interaction = client.interactions.create(
             model=model,
-            system_instruction=SYSTEM_PROMPT,
+            system_instruction=system_prompt(lang),
             input=prompt,
         )
     except Exception as exc:

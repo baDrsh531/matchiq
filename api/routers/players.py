@@ -54,10 +54,10 @@ def get_players(fixture_id: int):
 
 
 @router.get("/{fixture_id}/player/{player_id}")
-def get_player_detail(fixture_id: int, player_id: int):
-    """Détail d'un joueur : score composite, radar chart, analyse LLM."""
+def get_player_detail(fixture_id: int, player_id: int, lang: str = "fr"):
+    """Détail d'un joueur : score composite, radar chart, analyse LLM (fr/en)."""
     try:
-        return get_player_analysis(fixture_id, player_id)
+        return get_player_analysis(fixture_id, player_id, lang=(lang if lang in ("fr", "en") else "fr"))
     except ValueError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except (ApiFootballError, RateLimitError) as exc:

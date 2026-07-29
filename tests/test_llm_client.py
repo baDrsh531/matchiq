@@ -3,6 +3,7 @@ from types import SimpleNamespace
 import pytest
 
 from llm import llm_client
+from llm.prompt_templates import system_prompt
 
 
 class _FakeInteractions:
@@ -23,8 +24,21 @@ def test_generate_report_returns_output_text(monkeypatch):
 
     assert result == "Rapport généré."
     assert fake_interactions.last_kwargs["model"] == llm_client.DEFAULT_MODEL
-    assert fake_interactions.last_kwargs["system_instruction"] == llm_client.SYSTEM_PROMPT
+    # par défaut : prompt système français
+    assert fake_interactions.last_kwargs["system_instruction"] == system_prompt("fr")
     assert fake_interactions.last_kwargs["input"] == "Analyse ce joueur."
+
+
+def test_generate_report_switches_system_prompt_language(monkeypatch):
+    fake_interactions = _FakeInteractions()
+    monkeypatch.setattr(
+        llm_client, "_get_client", lambda: SimpleNamespace(interactions=fake_interactions)
+    )
+
+    llm_client.generate_report("prompt", lang="en")
+    instruction = fake_interactions.last_kwargs["system_instruction"]
+    assert instruction == system_prompt("en")
+    assert "English" in instruction
 
 
 def test_generate_report_uses_custom_model(monkeypatch):

@@ -13,16 +13,18 @@ export const getMatch = (fixtureId) =>
 export const getPlayers = (fixtureId) =>
   api.get(`/matches/${fixtureId}/players`).then((res) => res.data);
 
-export const getPlayerDetail = (fixtureId, playerId) =>
-  api.get(`/matches/${fixtureId}/player/${playerId}`).then((res) => res.data);
-
-export const getReport = (fixtureId, refresh = false) =>
+export const getPlayerDetail = (fixtureId, playerId, lang = "fr") =>
   api
-    .get(`/matches/${fixtureId}/report`, { params: { refresh } })
+    .get(`/matches/${fixtureId}/player/${playerId}`, { params: { lang } })
     .then((res) => res.data);
 
-export const askMatch = (fixtureId, q) =>
-  api.get(`/matches/${fixtureId}/ask`, { params: { q } }).then((res) => res.data);
+export const getReport = (fixtureId, refresh = false, lang = "fr") =>
+  api
+    .get(`/matches/${fixtureId}/report`, { params: { refresh, lang } })
+    .then((res) => res.data);
+
+export const askMatch = (fixtureId, q, lang = "fr") =>
+  api.get(`/matches/${fixtureId}/ask`, { params: { q, lang } }).then((res) => res.data);
 
 export const getPlayerHistory = (playerId) =>
   api.get(`/players/${playerId}/history`).then((res) => res.data);

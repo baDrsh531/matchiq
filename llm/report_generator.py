@@ -36,16 +36,22 @@ from persistence.database import SessionLocal
 from persistence.repository import get_player_history
 
 
-def _report_cache_path(fixture_id: int) -> Path:
-    return DATA_PROCESSED_DIR / f"{fixture_id}_report.json"
+def _lang_suffix(lang: str) -> str:
+    # Le français garde le nom d'origine (rétro-compatibilité des caches déjà
+    # présents dans demo_data/) ; les autres langues ont leur propre fichier.
+    return "" if lang == "fr" else f"_{lang}"
 
 
-def _player_analysis_cache_path(fixture_id: int, player_id: int) -> Path:
-    return DATA_PROCESSED_DIR / f"{fixture_id}_player_{player_id}.json"
+def _report_cache_path(fixture_id: int, lang: str = "fr") -> Path:
+    return DATA_PROCESSED_DIR / f"{fixture_id}_report{_lang_suffix(lang)}.json"
 
 
-def _qa_cache_path(fixture_id: int, question_key: str) -> Path:
-    return DATA_PROCESSED_DIR / f"{fixture_id}_qa_{question_key}.json"
+def _player_analysis_cache_path(fixture_id: int, player_id: int, lang: str = "fr") -> Path:
+    return DATA_PROCESSED_DIR / f"{fixture_id}_player_{player_id}{_lang_suffix(lang)}.json"
+
+
+def _qa_cache_path(fixture_id: int, question_key: str, lang: str = "fr") -> Path:
+    return DATA_PROCESSED_DIR / f"{fixture_id}_qa_{question_key}{_lang_suffix(lang)}.json"
 
 
 def _normalize_question(question: str) -> str:
@@ -126,14 +132,16 @@ def _recent_form(player_id: int, exclude_fixture_id: int, limit: int = 3) -> lis
     return matches[-limit:]
 
 
-def get_player_analysis(fixture_id: int, player_id: int, force_refresh: bool = False) -> dict:
-    """Retourne le score ML + l'analyse LLM d'un joueur, avec mise en cache."""
+def get_player_analysis(
+    fixture_id: int, player_id: int, force_refresh: bool = False, lang: str = "fr"
+) -> dict:
+    """Retourne le score ML + l'analyse LLM d'un joueur, avec mise en cache par langue."""
     ranked_players = rank_players(fixture_id)
     player = next((p for p in ranked_players if p["player_id"] == player_id), None)
     if player is None:
         raise ValueError(f"Joueur {player_id} introuvable pour le fixture {fixture_id}.")
 
-    cache_file = _player_analysis_cache_path(fixture_id, player_id)
+    cache_file = _player_analysis_cache_path(fixture_id, player_id, lang)
     if cache_file.exists() and not force_refresh:
         cached = json.loads(cache_file.read_text(encoding="utf-8"))
         cached["score"] = player
@@ -149,7 +157,8 @@ def get_player_analysis(fixture_id: int, player_id: int, force_refresh: bool = F
             player,
             recent_matches=recent_matches or None,
             player_events=player_events or None,
-        )
+        ),
+        lang=lang,
     )
     result = {"score": player, "analysis": analysis}
 
@@ -191,32 +200,35 @@ def _match_qa_context(fixture_id: int) -> dict:
     }
 
 
-def answer_match_question(fixture_id: int, question: str, force_refresh: bool = False) -> dict:
+def answer_match_question(
+    fixture_id: int, question: str, force_refresh: bool = False, lang: str = "fr"
+) -> dict:
     """Répond à une question en langage naturel sur un match, en s'appuyant
     uniquement sur les scores/stats déjà calculés (LLM ancré, anti-hallucination).
 
-    La réponse est mise en cache par (match, question normalisée) : reposer la
-    même question ne consomme aucun nouveau token LLM.
+    La réponse est mise en cache par (match, question normalisée, langue) :
+    reposer la même question ne consomme aucun nouveau token LLM.
     """
     question = question.strip()
-    cache_file = _qa_cache_path(fixture_id, _normalize_question(question))
+    cache_file = _qa_cache_path(fixture_id, _normalize_question(question), lang)
     if cache_file.exists() and not force_refresh:
         return json.loads(cache_file.read_text(encoding="utf-8"))
 
     context = _match_qa_context(fixture_id)
-    answer = generate_report(match_qa_prompt(question, context))
+    answer = generate_report(match_qa_prompt(question, context), lang=lang)
     result = {"question": question, "answer": answer}
 
     cache_file.write_text(json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8")
     return result
 
 
-def generate_match_report(fixture_id: int, force_refresh: bool = False) -> dict:
+def generate_match_report(fixture_id: int, force_refresh: bool = False, lang: str = "fr") -> dict:
     """Génère (ou relit depuis le cache) le rapport complet d'un match.
 
     3 appels LLM au total, quel que soit le nombre de joueurs du match.
+    Le rapport est mis en cache par langue (fr/en).
     """
-    cache_file = _report_cache_path(fixture_id)
+    cache_file = _report_cache_path(fixture_id, lang)
     if cache_file.exists() and not force_refresh:
         return json.loads(cache_file.read_text(encoding="utf-8"))
 
@@ -228,7 +240,7 @@ def generate_match_report(fixture_id: int, force_refresh: bool = False) -> dict:
     events_summary = _summarize_events(raw.get("events"))
 
     motm = ranked_players[0]
-    motm_report = generate_report(motm_report_prompt(motm, ranked_players, events_summary))
+    motm_report = generate_report(motm_report_prompt(motm, ranked_players, events_summary), lang=lang)
 
     enriched_players = []
     for player in ranked_players:
@@ -242,7 +254,7 @@ def generate_match_report(fixture_id: int, force_refresh: bool = False) -> dict:
         enriched_players.append(enriched)
 
     player_ids = [str(p["player_id"]) for p in ranked_players]
-    batch_text = generate_report(batch_player_analysis_prompt(enriched_players))
+    batch_text = generate_report(batch_player_analysis_prompt(enriched_players), lang=lang)
     player_reports = _parse_batch_blocks(
         batch_text, player_ids, fallback="Analyse indisponible pour ce joueur."
     )
@@ -252,7 +264,7 @@ def generate_match_report(fixture_id: int, force_refresh: bool = False) -> dict:
         teams.setdefault(player["team_name"], []).append(player)
     team_names = list(teams.keys())
 
-    tactics_text = generate_report(batch_tactical_suggestions_prompt(teams))
+    tactics_text = generate_report(batch_tactical_suggestions_prompt(teams), lang=lang)
     tactics_by_index = _parse_batch_blocks(
         tactics_text,
         [str(i) for i in range(1, len(team_names) + 1)],

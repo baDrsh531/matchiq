@@ -215,7 +215,7 @@ def test_get_players_rate_limited_returns_503(client, monkeypatch):
 def test_get_player_detail_returns_analysis(client, monkeypatch):
     monkeypatch.setattr(
         players, "get_player_analysis",
-        lambda fid, pid: {"player_id": pid, "analysis": "Match solide.", "radar": {"tacles": 9.0}},
+        lambda fid, pid, lang="fr": {"player_id": pid, "analysis": "Match solide.", "radar": {"tacles": 9.0}},
     )
     r = client.get("/matches/1035038/player/1")
     assert r.status_code == 200
@@ -223,7 +223,7 @@ def test_get_player_detail_returns_analysis(client, monkeypatch):
 
 
 def test_get_player_detail_unknown_player_returns_404(client, monkeypatch):
-    def boom(fid, pid):
+    def boom(fid, pid, lang="fr"):
         raise ValueError("Joueur absent de la feuille de match")
 
     monkeypatch.setattr(players, "get_player_analysis", boom)
@@ -231,7 +231,7 @@ def test_get_player_detail_unknown_player_returns_404(client, monkeypatch):
 
 
 def test_get_player_detail_missing_llm_key_returns_503(client, monkeypatch):
-    def boom(fid, pid):
+    def boom(fid, pid, lang="fr"):
         raise RuntimeError("GEMINI_API_KEY manquante")
 
     monkeypatch.setattr(players, "get_player_analysis", boom)
@@ -252,7 +252,7 @@ def _report():
 
 
 def test_get_report_returns_generated_report(client, monkeypatch):
-    monkeypatch.setattr(reports, "generate_match_report", lambda fid, force_refresh=False: _report())
+    monkeypatch.setattr(reports, "generate_match_report", lambda fid, force_refresh=False, lang="fr": _report())
     r = client.get("/matches/1035038/report")
     assert r.status_code == 200
     assert r.json()["motm_report"].startswith("Partey")
@@ -261,7 +261,7 @@ def test_get_report_returns_generated_report(client, monkeypatch):
 def test_get_report_passes_refresh_flag(client, monkeypatch):
     seen = {}
 
-    def fake(fid, force_refresh=False):
+    def fake(fid, force_refresh=False, lang="fr"):
         seen["refresh"] = force_refresh
         return _report()
 
@@ -275,14 +275,14 @@ def test_get_report_persists_and_flags_match(client, api_db, monkeypatch):
     save_match_snapshot(session, _match_info(), [_player()])
     session.close()
 
-    monkeypatch.setattr(reports, "generate_match_report", lambda fid, force_refresh=False: _report())
+    monkeypatch.setattr(reports, "generate_match_report", lambda fid, force_refresh=False, lang="fr": _report())
     client.get("/matches/1035038/report")
 
     assert client.get("/matches").json()["matches"][0]["has_report"] is True
 
 
 def test_get_report_missing_llm_key_returns_503(client, monkeypatch):
-    def boom(fid, force_refresh=False):
+    def boom(fid, force_refresh=False, lang="fr"):
         raise RuntimeError("GEMINI_API_KEY manquante")
 
     monkeypatch.setattr(reports, "generate_match_report", boom)
@@ -296,7 +296,7 @@ def test_get_report_missing_llm_key_returns_503(client, monkeypatch):
 def test_ask_match_returns_answer(client, monkeypatch):
     monkeypatch.setattr(
         reports, "answer_match_question",
-        lambda fid, q, force_refresh=False: {"question": q, "answer": "Réponse ancrée."},
+        lambda fid, q, force_refresh=False, lang="fr": {"question": q, "answer": "Réponse ancrée."},
     )
     r = client.get("/matches/1035038/ask", params={"q": "pourquoi cette note ?"})
     assert r.status_code == 200
@@ -313,7 +313,7 @@ def test_ask_match_requires_q_parameter(client):
 
 
 def test_ask_match_demo_or_llm_error_returns_503(client, monkeypatch):
-    def boom(fid, q, force_refresh=False):
+    def boom(fid, q, force_refresh=False, lang="fr"):
         raise RuntimeError("Mode démo : génération désactivée.")
 
     monkeypatch.setattr(reports, "answer_match_question", boom)
@@ -321,7 +321,7 @@ def test_ask_match_demo_or_llm_error_returns_503(client, monkeypatch):
 
 
 def test_ask_match_unknown_fixture_returns_404(client, monkeypatch):
-    def boom(fid, q, force_refresh=False):
+    def boom(fid, q, force_refresh=False, lang="fr"):
         raise ValueError("Aucun joueur trouvé pour le fixture")
 
     monkeypatch.setattr(reports, "answer_match_question", boom)
@@ -457,3 +457,37 @@ def test_search_players_finds_persisted_player(client, api_db):
     r = client.get("/search/players?query=partey")
     assert r.status_code == 200
     assert r.json()["players"][0]["name"] == "Thomas Partey"
+
+
+def test_report_threads_language(client, monkeypatch):
+    seen = {}
+
+    def fake(fid, force_refresh=False, lang="fr"):
+        seen["lang"] = lang
+        return {"motm_report": "x", "player_reports": {}, "tactical_suggestions": {}, "motm_player_id": 1}
+
+    monkeypatch.setattr(reports, "generate_match_report", fake)
+    client.get("/matches/1035038/report", params={"lang": "en"})
+    assert seen["lang"] == "en"
+
+
+def test_report_invalid_language_defaults_to_fr(client, monkeypatch):
+    seen = {}
+
+    def fake(fid, force_refresh=False, lang="fr"):
+        seen["lang"] = lang
+        return {"motm_report": "x", "player_reports": {}, "tactical_suggestions": {}, "motm_player_id": 1}
+
+    monkeypatch.setattr(reports, "generate_match_report", fake)
+    client.get("/matches/1035038/report", params={"lang": "de"})
+    assert seen["lang"] == "fr"
+
+
+def test_ask_threads_language(client, monkeypatch):
+    seen = {}
+    monkeypatch.setattr(
+        reports, "answer_match_question",
+        lambda fid, q, force_refresh=False, lang="fr": (seen.update(lang=lang) or {"question": q, "answer": "a"}),
+    )
+    client.get("/matches/1035038/ask", params={"q": "une question", "lang": "en"})
+    assert seen["lang"] == "en"

@@ -9,7 +9,7 @@ réciter.
 """
 import json
 
-SYSTEM_PROMPT = (
+_SYSTEM_BASE = (
     "Tu es un analyste tactique professionnel qui commente des matchs de "
     "football pour un public averti. Tu ne dois JAMAIS inventer ou modifier "
     "une statistique : utilise uniquement les chiffres fournis dans le JSON. "
@@ -19,10 +19,28 @@ SYSTEM_PROMPT = (
     "changements) ou à la forme récente du joueur quand ces informations "
     "sont fournies, et formule des constats concrets plutôt que des "
     "généralités. Évite les tournures du type 'il obtient un score de X dans "
-    "la catégorie Y' — dis plutôt ce que ça signifie sur le terrain. Réponds "
-    "en français, dans un style journalistique direct, sans emphase "
-    "artificielle."
+    "la catégorie Y' — dis plutôt ce que ça signifie sur le terrain."
 )
+
+# La consigne de langue est SÉPARÉE de la base : les prompts métier restent
+# rédigés en français (ce sont des instructions), mais la langue de SORTIE est
+# imposée ici. Cela suffit pour produire un rapport FR ou EN sans dupliquer
+# tous les templates.
+_LANG_DIRECTIVE = {
+    "fr": " Réponds en français, dans un style journalistique direct, sans emphase artificielle.",
+    "en": " Respond in English, in a direct journalistic style, without artificial emphasis.",
+}
+
+SUPPORTED_LANGS = ("fr", "en")
+
+
+def system_prompt(lang: str = "fr") -> str:
+    """Prompt système, avec la langue de sortie choisie (fr par défaut)."""
+    return _SYSTEM_BASE + _LANG_DIRECTIVE.get(lang, _LANG_DIRECTIVE["fr"])
+
+
+# Rétro-compatibilité : l'ancien nom reste la variante française.
+SYSTEM_PROMPT = system_prompt("fr")
 
 
 def _to_json(data) -> str:
