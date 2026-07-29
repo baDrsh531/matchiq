@@ -47,7 +47,12 @@ def _to_json(data) -> str:
     return json.dumps(data, ensure_ascii=False, indent=2)
 
 
-def motm_report_prompt(motm: dict, all_players: list[dict], events: list[dict] | None = None) -> str:
+def motm_report_prompt(
+    motm: dict,
+    all_players: list[dict],
+    events: list[dict] | None = None,
+    insights: list[str] | None = None,
+) -> str:
     ranking_summary = [
         {"name": p["name"], "position": p["position"], "composite_score": p["composite_score"]}
         for p in all_players[:5]
@@ -57,18 +62,24 @@ def motm_report_prompt(motm: dict, all_players: list[dict], events: list[dict] |
         if events
         else ""
     )
+    insights_block = (
+        "\nFaits marquants détectés automatiquement (par règles, à partir des "
+        f"scores) :\n{_to_json(insights)}\n"
+        if insights
+        else ""
+    )
     return (
         "Voici le joueur désigné Homme du Match (MOTM) et le top 5 du classement "
         "du match, calculés par le moteur de scoring :\n\n"
         f"MOTM:\n{_to_json(motm)}\n\n"
         f"Top 5 du match:\n{_to_json(ranking_summary)}\n"
-        f"{events_block}\n"
+        f"{events_block}"
+        f"{insights_block}\n"
         "Rédige un rapport de 3 à 5 phrases expliquant pourquoi ce joueur a "
-        "obtenu le meilleur score composite. Si le déroulé du match éclaire "
-        "sa performance (action décisive à un moment clé, entré en jeu pour "
-        "préserver un score, etc.), relie-le explicitement. Ne te contente "
-        "pas de reformuler le breakdown : explique la portée tactique de sa "
-        "performance."
+        "obtenu le meilleur score composite. Si le déroulé du match ou un fait "
+        "marquant éclaire sa performance (action décisive, domination d'une "
+        "équipe, etc.), relie-le explicitement. Ne te contente pas de "
+        "reformuler le breakdown : explique la portée tactique de sa performance."
     )
 
 

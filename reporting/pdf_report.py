@@ -37,6 +37,7 @@ _DIM = colors.HexColor("#566173")
 _LABELS = {
     "fr": {
         "motm": "Homme du match",
+        "insights": "Faits marquants",
         "ratings": "Notes des joueurs (score composite)",
         "tactics": "Suggestions tactiques",
         "player": "Joueur", "team": "Équipe", "pos": "Poste", "min": "Min", "rating": "Note",
@@ -44,6 +45,7 @@ _LABELS = {
     },
     "en": {
         "motm": "Man of the match",
+        "insights": "Key facts",
         "ratings": "Player ratings (composite score)",
         "tactics": "Tactical suggestions",
         "player": "Player", "team": "Team", "pos": "Position", "min": "Min", "rating": "Rating",
@@ -98,6 +100,13 @@ def build_match_pdf(summary: dict, ranked: list[dict], report: dict, lang: str =
         if report.get("motm_report"):
             story.append(Spacer(1, 4))
             story.append(Paragraph(escape(report["motm_report"]), st["body"]))
+
+    # Faits marquants (déterministes)
+    insights = report.get("insights") or []
+    if insights:
+        story.append(Paragraph(lab["insights"], st["h"]))
+        for item in insights:
+            story.append(Paragraph(f"• {escape(item)}", st["body"]))
 
     # Tableau des notes
     story.append(Paragraph(lab["ratings"], st["h"]))

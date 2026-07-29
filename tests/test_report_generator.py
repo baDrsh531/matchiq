@@ -276,3 +276,56 @@ def test_answer_match_question_caches_per_language(tmp_path, monkeypatch):
     # re-demander en français relit le cache FR : pas de 3ᵉ appel
     report_generator.answer_match_question(999, "Question ?", lang="fr")
     assert seen == ["fr", "en"]
+
+
+# ── Insights dans le rapport (fonctionnalité) ───────────────────────────────
+
+def test_motm_report_prompt_includes_insights():
+    from llm.prompt_templates import motm_report_prompt
+    prompt = motm_report_prompt(
+        {"name": "Partey", "position": "Defender", "composite_score": 10.0, "breakdown": {}},
+        [{"name": "Partey", "position": "Defender", "composite_score": 10.0}],
+        insights=["Partey survole le classement."],
+    )
+    assert "Faits marquants" in prompt
+    assert "survole le classement" in prompt
+
+
+def test_generate_match_report_attaches_insights(tmp_path, monkeypatch):
+    monkeypatch.setattr(report_generator, "DATA_PROCESSED_DIR", tmp_path)
+    players = [_make_player(1, "Team A"), _make_player(2, "Team A"), _make_player(3, "Team B")]
+    players[0]["position"], players[0]["composite_score"] = "Defender", 10.0  # MOTM défenseur + gros écart
+    players[1]["position"], players[1]["composite_score"] = "Attacker", 5.0
+    players[2]["position"], players[2]["composite_score"] = "Attacker", 4.0
+    monkeypatch.setattr(report_generator, "rank_players", lambda fid: players)
+    monkeypatch.setattr(report_generator, "fetch_fixture", lambda fid: {"events": []})
+    monkeypatch.setattr(report_generator, "_recent_form", lambda pid, exclude_fixture_id, limit=3: [])
+
+    calls = []
+
+    def fake(prompt, lang="fr"):
+        calls.append(prompt)
+        if len(calls) == 1:
+            return "Rapport MOTM."
+        if len(calls) == 2:
+            return "[[1]]\nA.\n\n[[2]]\nB.\n\n[[3]]\nC."
+        return "[[1]]\nTactique A.\n\n[[2]]\nTactique B."
+
+    monkeypatch.setattr(report_generator, "generate_report", fake)
+
+    report = report_generator.generate_match_report(999, force_refresh=True)
+    assert isinstance(report["insights"], list) and len(report["insights"]) >= 1
+    # les faits marquants ont bien été passés au prompt du MOTM
+    assert "Faits marquants" in calls[0]
+
+
+def test_generate_match_report_cache_backfills_insights(tmp_path, monkeypatch):
+    monkeypatch.setattr(report_generator, "DATA_PROCESSED_DIR", tmp_path)
+    # ancien rapport caché SANS insights
+    (tmp_path / "999_report.json").write_text(
+        '{"motm_report":"x","tactical_suggestions":{}}', encoding="utf-8"
+    )
+    monkeypatch.setattr(report_generator, "rank_players", lambda fid: [_make_player(1), _make_player(2)])
+
+    report = report_generator.generate_match_report(999)
+    assert "insights" in report  # recalculés à la lecture, sans appel LLM

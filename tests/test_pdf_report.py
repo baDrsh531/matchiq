@@ -41,3 +41,12 @@ def test_build_match_pdf_survives_special_characters():
 def test_build_match_pdf_handles_empty_ranking():
     pdf = build_match_pdf(_SUMMARY, [], {"tactical_suggestions": {}}, lang="fr")
     assert pdf[:5] == b"%PDF-"
+
+
+def test_build_match_pdf_renders_insights():
+    report = dict(_REPORT, insights=[
+        "Benzema survole le classement : 2.6 pts d'avance sur le 2ᵉ.",
+        "Le défenseur X est élu homme du match, devant tous les attaquants.",
+    ])
+    pdf = build_match_pdf(_SUMMARY, _RANKED, report, lang="fr")
+    assert pdf[:5] == b"%PDF-"

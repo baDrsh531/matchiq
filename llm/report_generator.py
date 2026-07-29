@@ -31,6 +31,7 @@ from llm.prompt_templates import (
     player_analysis_prompt,
 )
 from ml.ingestion import build_match_summary, fetch_fixture
+from ml.insights import match_insights
 from ml.scoring_engine import rank_players
 from persistence.database import SessionLocal
 from persistence.repository import get_player_history
@@ -230,7 +231,11 @@ def generate_match_report(fixture_id: int, force_refresh: bool = False, lang: st
     """
     cache_file = _report_cache_path(fixture_id, lang)
     if cache_file.exists() and not force_refresh:
-        return json.loads(cache_file.read_text(encoding="utf-8"))
+        report = json.loads(cache_file.read_text(encoding="utf-8"))
+        # Les faits marquants sont déterministes : on les (re)calcule à la lecture
+        # pour que même un ancien rapport caché les expose (sans régénérer le LLM).
+        report.setdefault("insights", match_insights(rank_players(fixture_id)))
+        return report
 
     ranked_players = rank_players(fixture_id)
     if not ranked_players:
@@ -238,9 +243,12 @@ def generate_match_report(fixture_id: int, force_refresh: bool = False, lang: st
 
     raw = fetch_fixture(fixture_id)
     events_summary = _summarize_events(raw.get("events"))
+    insights = match_insights(ranked_players)
 
     motm = ranked_players[0]
-    motm_report = generate_report(motm_report_prompt(motm, ranked_players, events_summary), lang=lang)
+    motm_report = generate_report(
+        motm_report_prompt(motm, ranked_players, events_summary, insights=insights), lang=lang
+    )
 
     enriched_players = []
     for player in ranked_players:
@@ -281,6 +289,7 @@ def generate_match_report(fixture_id: int, force_refresh: bool = False, lang: st
         "motm_report": motm_report,
         "player_reports": player_reports,
         "tactical_suggestions": tactical_suggestions,
+        "insights": insights,
     }
 
     cache_file.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
