@@ -491,3 +491,28 @@ def test_ask_threads_language(client, monkeypatch):
     )
     client.get("/matches/1035038/ask", params={"q": "une question", "lang": "en"})
     assert seen["lang"] == "en"
+
+
+# --------------------------------------------------------------------------
+# /matches/{id}/report.pdf — export PDF (Phase 4)
+# --------------------------------------------------------------------------
+
+def test_report_pdf_returns_pdf(client, monkeypatch):
+    monkeypatch.setattr(reports, "generate_match_report",
+                        lambda fid, lang="fr": {"motm_report": "x", "tactical_suggestions": {}, "motm_player_id": 1})
+    monkeypatch.setattr(reports, "rank_players", lambda fid: [_player()])
+    monkeypatch.setattr(reports, "fetch_fixture", lambda fid: {})
+    monkeypatch.setattr(reports, "build_match_summary", lambda fid, raw: _match_info(fid))
+
+    r = client.get("/matches/1035038/report.pdf")
+    assert r.status_code == 200
+    assert r.headers["content-type"] == "application/pdf"
+    assert r.content[:5] == b"%PDF-"
+
+
+def test_report_pdf_demo_or_missing_report_returns_503(client, monkeypatch):
+    def boom(fid, lang="fr"):
+        raise RuntimeError("Mode démo : rapport non disponible.")
+
+    monkeypatch.setattr(reports, "generate_match_report", boom)
+    assert client.get("/matches/1035038/report.pdf").status_code == 503

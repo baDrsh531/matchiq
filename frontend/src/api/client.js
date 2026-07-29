@@ -1,8 +1,12 @@
 import axios from "axios";
 
-const api = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || "http://localhost:8000",
-});
+export const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
+
+const api = axios.create({ baseURL: API_BASE });
+
+// URL directe du PDF (le navigateur télécharge/ouvre via ce lien, pas via axios).
+export const reportPdfUrl = (fixtureId, lang = "fr") =>
+  `${API_BASE}/matches/${fixtureId}/report.pdf?lang=${lang}`;
 
 export const getRecentMatches = (limit = 20) =>
   api.get("/matches", { params: { limit } }).then((res) => res.data);

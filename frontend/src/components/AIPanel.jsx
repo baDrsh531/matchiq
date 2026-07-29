@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { askMatch, getReport } from "../api/client";
+import { askMatch, getReport, reportPdfUrl } from "../api/client";
 
 const SUGGESTIONS = [
   "Pourquoi ce joueur est-il l'homme du match ?",
@@ -243,6 +243,31 @@ export default function AIPanel({ fixtureId }) {
               </div>
             ))}
           </section>
+
+          <a
+            href={reportPdfUrl(fixtureId, lang)}
+            target="_blank"
+            rel="noreferrer"
+            style={{
+              alignSelf: "flex-start",
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 8,
+              background: "var(--bg-panel-raised)",
+              border: "1px solid var(--border)",
+              color: "var(--text)",
+              borderRadius: 8,
+              padding: "8px 14px",
+              fontSize: "0.85rem",
+              textDecoration: "none",
+            }}
+          >
+            <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.8">
+              <path d="M12 3v12m0 0l-4-4m4 4l4-4" strokeLinecap="round" strokeLinejoin="round" />
+              <path d="M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2" strokeLinecap="round" />
+            </svg>
+            Télécharger le rapport (PDF)
+          </a>
         </div>
       )}
     </div>

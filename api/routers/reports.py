@@ -1,11 +1,13 @@
 import logging
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Response
 
 from llm.report_generator import answer_match_question, generate_match_report
-from ml.ingestion import ApiFootballError, RateLimitError
+from ml.ingestion import ApiFootballError, RateLimitError, build_match_summary, fetch_fixture
+from ml.scoring_engine import rank_players
 from persistence.database import SessionLocal
 from persistence.repository import save_report
+from reporting.pdf_report import build_match_pdf
 
 logger = logging.getLogger("matchiq.api")
 
@@ -48,6 +50,39 @@ def get_report(fixture_id: int, refresh: bool = False, lang: str = "fr"):
         logger.exception("Échec de la persistance du rapport pour le fixture %s", fixture_id)
 
     return report
+
+
+@router.get("/{fixture_id}/report.pdf")
+def get_report_pdf(fixture_id: int, lang: str = "fr"):
+    """Rapport de match en PDF (score, homme du match, notes, tactique).
+
+    Met en page le rapport LLM (mis en cache) + les scores calculés. En mode
+    démo, disponible seulement si le rapport de ce match est déjà en cache.
+    """
+    lang = _lang(lang)
+    try:
+        report = generate_match_report(fixture_id, lang=lang)
+        ranked = rank_players(fixture_id)
+        summary = build_match_summary(fixture_id, fetch_fixture(fixture_id))
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except RateLimitError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    except ApiFootballError as exc:
+        if "introuvable" in str(exc):
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    except RuntimeError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Erreur serveur inattendue: {exc}") from exc
+
+    pdf = build_match_pdf(summary, ranked, report, lang)
+    return Response(
+        content=pdf,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'inline; filename="matchiq_{fixture_id}_{lang}.pdf"'},
+    )
 
 
 @router.get("/{fixture_id}/ask")
