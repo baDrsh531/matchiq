@@ -1,3 +1,5 @@
+import pytest
+
 from llm import report_generator
 
 
@@ -167,3 +169,72 @@ def test_generate_match_report_enriches_players_with_events_and_form(tmp_path, m
     assert "match_events" in captured["batch_prompt"]
     assert "recent_matches" in captured["batch_prompt"]
     assert "Other Team" in captured["batch_prompt"]
+
+
+# ── Q&R ancrée sur un match (Phase 2) ───────────────────────────────────────
+
+def _fake_ranked():
+    return [
+        {
+            "player_id": 1, "name": "Star", "team_name": "Home FC", "position": "Attacker",
+            "minutes": 90, "composite_score": 10.0,
+            "contributions": [{"category": "goals", "label": "buts", "value": 0.4}],
+            "strengths": ["buts"], "weaknesses": [],
+        },
+        {
+            "player_id": 2, "name": "Keeper", "team_name": "Away FC", "position": "Goalkeeper",
+            "minutes": 90, "composite_score": 6.0,
+            "contributions": [], "strengths": ["arrêts"], "weaknesses": [],
+        },
+    ]
+
+
+def _patch_qa_context(monkeypatch, tmp_path):
+    monkeypatch.setattr(report_generator, "DATA_PROCESSED_DIR", tmp_path)
+    monkeypatch.setattr(report_generator, "rank_players", lambda fid: _fake_ranked())
+    monkeypatch.setattr(report_generator, "fetch_fixture", lambda fid: {"events": []})
+    monkeypatch.setattr(
+        report_generator, "build_match_summary",
+        lambda fid, raw: {
+            "teams": {"home": {"name": "Home FC"}, "away": {"name": "Away FC"}},
+            "goals": {"home": 2, "away": 1},
+        },
+    )
+
+
+def test_answer_match_question_grounds_prompt_and_caches(tmp_path, monkeypatch):
+    _patch_qa_context(monkeypatch, tmp_path)
+    calls = {"n": 0}
+
+    def fake_gen(prompt):
+        calls["n"] += 1
+        # ancrage : les données calculées ET la question sont dans le prompt
+        assert "Star" in prompt and "composite_score" in prompt
+        assert "meilleure note" in prompt
+        return "Star a dominé le match."
+
+    monkeypatch.setattr(report_generator, "generate_report", fake_gen)
+
+    r1 = report_generator.answer_match_question(999, "Qui a la meilleure note ?")
+    assert r1["answer"] == "Star a dominé le match."
+    assert calls["n"] == 1
+
+    # même question (casse / espaces différents) → cache, aucun nouvel appel LLM
+    r2 = report_generator.answer_match_question(999, "  QUI a   la meilleure note ? ")
+    assert r2["answer"] == "Star a dominé le match."
+    assert calls["n"] == 1
+
+
+def test_answer_match_question_unknown_fixture_raises(tmp_path, monkeypatch):
+    monkeypatch.setattr(report_generator, "DATA_PROCESSED_DIR", tmp_path)
+    monkeypatch.setattr(report_generator, "rank_players", lambda fid: [])
+    with pytest.raises(ValueError):
+        report_generator.answer_match_question(999, "une question")
+
+
+def test_normalize_question_is_stable_across_casing_and_spacing():
+    a = report_generator._normalize_question("Pourquoi ?")
+    b = report_generator._normalize_question("  pourquoi   ? ")
+    c = report_generator._normalize_question("Une autre question")
+    assert a == b
+    assert a != c

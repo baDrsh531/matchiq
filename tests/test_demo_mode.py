@@ -128,3 +128,24 @@ def test_lecture_de_la_variable_denvironnement(monkeypatch, valeur, attendu):
     assert config.DEMO_MODE is attendu
     monkeypatch.delenv("DEMO_MODE", raising=False)
     importlib.reload(config)
+
+
+def test_qa_generation_refusee_en_demo(demo_on, monkeypatch, tmp_path):
+    """Une NOUVELLE question (non cachée) doit être refusée en mode démo :
+    la génération LLM est bloquée. Seules les réponses déjà en cache sortent."""
+    from llm import report_generator
+
+    monkeypatch.setattr(report_generator, "DATA_PROCESSED_DIR", tmp_path)
+    monkeypatch.setattr(
+        report_generator, "rank_players",
+        lambda fid: [{
+            "player_id": 1, "name": "X", "team_name": "A", "position": "Attacker",
+            "minutes": 90, "composite_score": 8.0, "contributions": [],
+            "strengths": [], "weaknesses": [],
+        }],
+    )
+    monkeypatch.setattr(report_generator, "fetch_fixture", lambda fid: {"events": []})
+    monkeypatch.setattr(report_generator, "build_match_summary", lambda fid, raw: {"teams": {}, "goals": {}})
+
+    with pytest.raises(RuntimeError, match="[Mm]ode démo"):
+        report_generator.answer_match_question(1, "une nouvelle question jamais posée")

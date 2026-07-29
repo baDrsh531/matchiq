@@ -21,6 +21,9 @@ export const getReport = (fixtureId, refresh = false) =>
     .get(`/matches/${fixtureId}/report`, { params: { refresh } })
     .then((res) => res.data);
 
+export const askMatch = (fixtureId, q) =>
+  api.get(`/matches/${fixtureId}/ask`, { params: { q } }).then((res) => res.data);
+
 export const getPlayerHistory = (playerId) =>
   api.get(`/players/${playerId}/history`).then((res) => res.data);
 

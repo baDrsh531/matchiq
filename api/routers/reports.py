@@ -2,7 +2,7 @@ import logging
 
 from fastapi import APIRouter, HTTPException
 
-from llm.report_generator import generate_match_report
+from llm.report_generator import answer_match_question, generate_match_report
 from ml.ingestion import ApiFootballError, RateLimitError
 from persistence.database import SessionLocal
 from persistence.repository import save_report
@@ -44,3 +44,31 @@ def get_report(fixture_id: int, refresh: bool = False):
         logger.exception("Échec de la persistance du rapport pour le fixture %s", fixture_id)
 
     return report
+
+
+@router.get("/{fixture_id}/ask")
+def ask_match(fixture_id: int, q: str, refresh: bool = False):
+    """Question en langage naturel sur un match : la réponse est fondée
+    uniquement sur les scores/stats déjà calculés (LLM ancré, anti-hallucination).
+
+    La réponse est mise en cache par question ; reposer la même n'appelle pas
+    à nouveau le LLM.
+    """
+    question = (q or "").strip()
+    if len(question) < 3:
+        raise HTTPException(status_code=400, detail="La question doit faire au moins 3 caractères.")
+
+    try:
+        return answer_match_question(fixture_id, question, force_refresh=refresh)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except RateLimitError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    except ApiFootballError as exc:
+        if "introuvable" in str(exc):
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    except RuntimeError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Erreur serveur inattendue: {exc}") from exc

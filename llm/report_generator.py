@@ -16,6 +16,7 @@ Chaque prompt est enrichi (gratuitement, données déjà en cache/DB) avec :
 - la forme récente du joueur (matchs précédents déjà analysés, via la DB)
   pour commenter une tendance plutôt qu'un match isolé.
 """
+import hashlib
 import json
 import re
 from pathlib import Path
@@ -25,10 +26,11 @@ from llm.llm_client import generate_report
 from llm.prompt_templates import (
     batch_player_analysis_prompt,
     batch_tactical_suggestions_prompt,
+    match_qa_prompt,
     motm_report_prompt,
     player_analysis_prompt,
 )
-from ml.ingestion import fetch_fixture
+from ml.ingestion import build_match_summary, fetch_fixture
 from ml.scoring_engine import rank_players
 from persistence.database import SessionLocal
 from persistence.repository import get_player_history
@@ -40,6 +42,17 @@ def _report_cache_path(fixture_id: int) -> Path:
 
 def _player_analysis_cache_path(fixture_id: int, player_id: int) -> Path:
     return DATA_PROCESSED_DIR / f"{fixture_id}_player_{player_id}.json"
+
+
+def _qa_cache_path(fixture_id: int, question_key: str) -> Path:
+    return DATA_PROCESSED_DIR / f"{fixture_id}_qa_{question_key}.json"
+
+
+def _normalize_question(question: str) -> str:
+    """Clé de cache stable : deux formulations identiques à la casse / aux
+    espaces près partagent la même réponse (et donc un seul appel LLM)."""
+    canonical = " ".join(question.strip().lower().split())
+    return hashlib.sha1(canonical.encode("utf-8")).hexdigest()[:12]
 
 
 def _parse_batch_blocks(text: str, keys: list[str], fallback: str) -> dict[str, str]:
@@ -143,6 +156,58 @@ def get_player_analysis(fixture_id: int, player_id: int, force_refresh: bool = F
     cache_file.write_text(
         json.dumps({"analysis": analysis}, ensure_ascii=False, indent=2), encoding="utf-8"
     )
+    return result
+
+
+def _match_qa_context(fixture_id: int) -> dict:
+    """Contexte compact d'un match pour la Q&R : uniquement des données déjà
+    calculées/en cache (scores, contributions, déroulé). Aucun appel LLM ici."""
+    ranked = rank_players(fixture_id)
+    if not ranked:
+        raise ValueError(f"Aucun joueur trouvé pour le fixture {fixture_id}.")
+
+    raw = fetch_fixture(fixture_id)
+    summary = build_match_summary(fixture_id, raw)
+
+    players = [
+        {
+            "name": p["name"],
+            "team": p["team_name"],
+            "position": p["position"],
+            "minutes": p["minutes"],
+            "composite_score": p["composite_score"],
+            "top_contributions": p.get("contributions", [])[:4],
+            "strengths": p["strengths"],
+            "weaknesses": p["weaknesses"],
+        }
+        for p in ranked
+    ]
+    return {
+        "teams": summary.get("teams"),
+        "goals": summary.get("goals"),
+        "man_of_the_match": ranked[0]["name"],
+        "players": players,
+        "events": _summarize_events(raw.get("events")),
+    }
+
+
+def answer_match_question(fixture_id: int, question: str, force_refresh: bool = False) -> dict:
+    """Répond à une question en langage naturel sur un match, en s'appuyant
+    uniquement sur les scores/stats déjà calculés (LLM ancré, anti-hallucination).
+
+    La réponse est mise en cache par (match, question normalisée) : reposer la
+    même question ne consomme aucun nouveau token LLM.
+    """
+    question = question.strip()
+    cache_file = _qa_cache_path(fixture_id, _normalize_question(question))
+    if cache_file.exists() and not force_refresh:
+        return json.loads(cache_file.read_text(encoding="utf-8"))
+
+    context = _match_qa_context(fixture_id)
+    answer = generate_report(match_qa_prompt(question, context))
+    result = {"question": question, "answer": answer}
+
+    cache_file.write_text(json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8")
     return result
 
 

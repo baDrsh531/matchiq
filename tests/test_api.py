@@ -289,6 +289,45 @@ def test_get_report_missing_llm_key_returns_503(client, monkeypatch):
 
 
 # --------------------------------------------------------------------------
+# /matches/{id}/ask — Q&R ancrée (Phase 2)
+# --------------------------------------------------------------------------
+
+def test_ask_match_returns_answer(client, monkeypatch):
+    monkeypatch.setattr(
+        reports, "answer_match_question",
+        lambda fid, q, force_refresh=False: {"question": q, "answer": "Réponse ancrée."},
+    )
+    r = client.get("/matches/1035038/ask", params={"q": "pourquoi cette note ?"})
+    assert r.status_code == 200
+    assert r.json()["answer"] == "Réponse ancrée."
+
+
+def test_ask_match_rejects_short_question(client):
+    assert client.get("/matches/1035038/ask", params={"q": "a"}).status_code == 400
+
+
+def test_ask_match_requires_q_parameter(client):
+    # q est obligatoire → 422 (validation FastAPI) s'il manque
+    assert client.get("/matches/1035038/ask").status_code == 422
+
+
+def test_ask_match_demo_or_llm_error_returns_503(client, monkeypatch):
+    def boom(fid, q, force_refresh=False):
+        raise RuntimeError("Mode démo : génération désactivée.")
+
+    monkeypatch.setattr(reports, "answer_match_question", boom)
+    assert client.get("/matches/1035038/ask", params={"q": "une vraie question"}).status_code == 503
+
+
+def test_ask_match_unknown_fixture_returns_404(client, monkeypatch):
+    def boom(fid, q, force_refresh=False):
+        raise ValueError("Aucun joueur trouvé pour le fixture")
+
+    monkeypatch.setattr(reports, "answer_match_question", boom)
+    assert client.get("/matches/999999/ask", params={"q": "une question"}).status_code == 404
+
+
+# --------------------------------------------------------------------------
 # /players/{id}/history et /teams/{id}/history
 # --------------------------------------------------------------------------
 

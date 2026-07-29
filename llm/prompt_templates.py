@@ -84,6 +84,29 @@ def player_analysis_prompt(
     )
 
 
+def match_qa_prompt(question: str, context: dict) -> str:
+    """Question/réponse ancrée sur un match : le LLM répond UNIQUEMENT à partir
+    des données calculées fournies (score, classement, contributions, déroulé),
+    jamais de ses connaissances. S'il ne peut pas répondre depuis ces données,
+    il doit le dire au lieu d'inventer."""
+    return (
+        "Voici les données calculées (moteur ML) pour un match de football : le "
+        "score final, le classement des joueurs par score composite avec leurs "
+        "contributions pondérées et leurs points forts/faibles, et le déroulé "
+        "du match.\n\n"
+        f"{_to_json(context)}\n\n"
+        f"Question posée par l'utilisateur :\n« {question} »\n\n"
+        "Réponds à cette question en t'appuyant STRICTEMENT et UNIQUEMENT sur "
+        "les données ci-dessus — pas sur tes connaissances générales du football "
+        "ni sur ce que tu crois savoir de ces joueurs. Interprète les chiffres "
+        "(portée tactique) plutôt que de les réciter, en 1 à 4 phrases, style "
+        "journalistique direct. Si les données ne permettent pas de répondre "
+        "(information absente, joueur non présent dans ce match), dis-le "
+        "clairement au lieu d'inventer. N'introduis jamais un chiffre qui ne "
+        "figure pas dans les données."
+    )
+
+
 BLOCK_DELIMITER_TEMPLATE = "[[{key}]]"
 
 
