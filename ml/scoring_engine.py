@@ -144,6 +144,39 @@ def _detect_strengths_weaknesses(
     return strengths, weaknesses
 
 
+def score_confidence(minutes: int) -> dict:
+    """Fiabilité du score selon le temps de jeu.
+
+    Un score bâti sur peu de minutes repose sur un petit échantillon d'actions :
+    il est plus volatil et moins représentatif. On le signale honnêtement au
+    lieu d'afficher toutes les notes avec la même assurance.
+    """
+    if minutes >= 60:
+        level, label = "high", "Fiabilité élevée"
+    elif minutes >= 30:
+        level, label = "medium", "Fiabilité moyenne"
+    else:
+        level, label = "low", "Fiabilité faible"
+    return {"level": level, "label": label, "minutes": minutes}
+
+
+def score_contributions(breakdown: dict[str, float]) -> list[dict]:
+    """Décompose le score en la contribution (pondérée par poste) de chaque
+    catégorie, triée de la plus favorable à la plus pénalisante.
+
+    Une valeur négative (fautes, cartons, buts encaissés) a coûté des points.
+    C'est le détail tel que le moteur l'a calculé — aucune valeur inventée, on
+    ne fait qu'exposer `breakdown`. Les catégories sans effet (0) sont masquées.
+    """
+    items = [
+        {"category": cat, "label": CATEGORY_LABELS.get(cat, cat), "value": round(value, 3)}
+        for cat, value in breakdown.items()
+        if abs(value) > 1e-9
+    ]
+    items.sort(key=lambda it: it["value"], reverse=True)
+    return items
+
+
 def compute_player_score(
     player_stats: PlayerMatchStats,
     position: str,
@@ -176,6 +209,8 @@ def compute_player_score(
         "minutes": player_stats.minutes,
         "raw_score": raw_score,
         "breakdown": breakdown,
+        "contributions": score_contributions(breakdown),
+        "confidence": score_confidence(player_stats.minutes),
         "radar": radar,
         "strengths": strengths,
         "weaknesses": weaknesses,

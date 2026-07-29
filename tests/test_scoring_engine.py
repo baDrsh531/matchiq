@@ -148,3 +148,50 @@ def test_rank_players_excludes_players_with_zero_minutes(monkeypatch):
     ranked = scoring_engine.rank_players(999999)
     names = [p["name"] for p in ranked]
     assert "Did Not Play" not in names
+
+
+# ── Explicabilité du score (Phase 1) ────────────────────────────────────────
+
+@pytest.mark.parametrize(
+    "minutes, level",
+    [(90, "high"), (60, "high"), (59, "medium"), (30, "medium"), (29, "low"), (0, "low")],
+)
+def test_score_confidence_tiers(minutes, level):
+    conf = scoring_engine.score_confidence(minutes)
+    assert conf["level"] == level
+    assert conf["minutes"] == minutes
+    assert conf["label"]  # libellé non vide
+
+
+def test_score_contributions_sorted_desc_and_excludes_zeros():
+    breakdown = {"goals": 0.30, "tackles": 0.0, "cards_yellow": -0.05, "assists": 0.12}
+    contribs = scoring_engine.score_contributions(breakdown)
+
+    values = [c["value"] for c in contribs]
+    assert values == sorted(values, reverse=True)           # trié décroissant
+    cats = [c["category"] for c in contribs]
+    assert "tackles" not in cats                             # les 0 sont masqués
+    assert "cards_yellow" in cats                            # le négatif est gardé
+    # le libellé lisible est bien mappé
+    assert next(c for c in contribs if c["category"] == "goals")["label"] == "buts"
+
+
+def test_score_contributions_matches_nonzero_breakdown_entries():
+    stats = make_stats(position="Defender", tackles=4, interceptions=3, fouls_committed=2, cards_yellow=1)
+    result = scoring_engine.compute_player_score(stats, "Defender")
+    nonzero = {k for k, v in result["breakdown"].items() if abs(v) > 1e-9}
+    assert {c["category"] for c in result["contributions"]} == nonzero
+
+
+def test_compute_player_score_exposes_confidence_and_contributions():
+    result = scoring_engine.compute_player_score(make_stats(minutes=20), "Midfielder")
+    assert result["confidence"]["level"] == "low"           # 20 min → faible
+    assert isinstance(result["contributions"], list)
+
+
+def test_rank_players_propagates_explainability(monkeypatch):
+    monkeypatch.setattr(scoring_engine, "fetch_fixture", lambda fixture_id: _fake_raw_fixture())
+    ranked = scoring_engine.rank_players(999999)
+    sub = next(p for p in ranked if p["name"] == "Bench Sub")  # 3 minutes
+    assert sub["confidence"]["level"] == "low"
+    assert "contributions" in ranked[0]

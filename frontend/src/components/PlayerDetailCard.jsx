@@ -19,6 +19,10 @@ export default function PlayerDetailCard({ fixtureId, player }) {
 
   if (!player) return null;
 
+  const CONFIDENCE_COLOR = { high: "var(--green)", medium: "var(--gold)", low: "var(--red)" };
+  const contributions = player.contributions || [];
+  const maxAbs = contributions.reduce((m, c) => Math.max(m, Math.abs(c.value)), 0) || 1;
+
   const loadAnalysis = async () => {
     setStatus("loading");
     try {
@@ -60,7 +64,108 @@ export default function PlayerDetailCard({ fixtureId, player }) {
           {player.position} · {player.team_name} · {player.minutes}&apos;
         </div>
 
-        <div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
+        {player.confidence && (
+          <div
+            title={`Score calculé sur ${player.confidence.minutes} minutes de jeu`}
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 6,
+              marginTop: 8,
+              fontSize: "0.74rem",
+              color: "var(--text-dim)",
+            }}
+          >
+            <span
+              style={{
+                width: 8,
+                height: 8,
+                borderRadius: "50%",
+                background: CONFIDENCE_COLOR[player.confidence.level] || "var(--text-dim)",
+              }}
+            />
+            {player.confidence.label}
+          </div>
+        )}
+
+        {contributions.length > 0 && (
+          <div style={{ marginTop: 14 }}>
+            <div
+              style={{
+                fontSize: "0.72rem",
+                textTransform: "uppercase",
+                letterSpacing: "0.05em",
+                color: "var(--text-dim)",
+                marginBottom: 8,
+              }}
+            >
+              Comment se construit ce score
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 6, width: "100%" }}>
+              {contributions.map((c) => {
+                const positive = c.value >= 0;
+                const pct = Math.max(Math.round((Math.abs(c.value) / maxAbs) * 100), 3);
+                return (
+                  <div
+                    key={c.category}
+                    style={{ display: "flex", alignItems: "center", gap: 8, width: "100%" }}
+                  >
+                    <span
+                      style={{
+                        width: "7.5rem",
+                        flexShrink: 0,
+                        fontSize: "0.78rem",
+                        color: "var(--text-dim)",
+                        whiteSpace: "nowrap",
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                      }}
+                    >
+                      {c.label}
+                    </span>
+                    <div
+                      style={{
+                        flex: 1,
+                        minWidth: 32,
+                        height: 8,
+                        borderRadius: 4,
+                        background: "var(--bg-panel-raised)",
+                        overflow: "hidden",
+                      }}
+                    >
+                      <div
+                        style={{
+                          height: "100%",
+                          width: `${pct}%`,
+                          borderRadius: 4,
+                          background: positive ? "var(--green)" : "var(--red)",
+                        }}
+                      />
+                    </div>
+                    <span
+                      className="mono"
+                      style={{
+                        width: "3.2rem",
+                        flexShrink: 0,
+                        fontSize: "0.72rem",
+                        textAlign: "right",
+                        color: positive ? "var(--green)" : "var(--red)",
+                      }}
+                    >
+                      {positive ? "+" : "−"}
+                      {Math.abs(c.value).toFixed(2)}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+            <div style={{ fontSize: "0.7rem", color: "var(--text-dim)", marginTop: 8 }}>
+              Contribution pondérée selon le poste · le vert ajoute, le rouge retire
+            </div>
+          </div>
+        )}
+
+        <div style={{ display: "flex", gap: 8, marginTop: 14, flexWrap: "wrap" }}>
           {status === "idle" && (
             <button
               onClick={loadAnalysis}
