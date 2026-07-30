@@ -54,6 +54,59 @@ function FormSummary({ form }) {
   );
 }
 
+// Écarts de performance vs la baseline personnelle du joueur (z-score).
+function AnomaliesPanel({ data }) {
+  if (!data.enough_data) return null;                 // baseline pas assez fournie
+  if (!data.anomalies.length) return null;            // joueur régulier : rien à signaler
+
+  const badge = (a) => {
+    const record = a.type === "record";
+    return (
+      <div
+        key={a.fixture_id}
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          padding: "8px 10px",
+          borderRadius: 8,
+          border: `1px solid ${record ? "var(--green)" : "var(--red)"}`,
+          background: "var(--bg-panel-raised)",
+        }}
+      >
+        <span style={{ fontSize: "0.85rem" }}>
+          <span style={{ color: record ? "var(--green)" : "var(--red)", fontWeight: 600 }}>
+            {record ? "▲ Record perso" : "▼ Contre-performance"}
+          </span>{" "}
+          <span style={{ color: "var(--text-dim)" }}>vs {a.opponent_name}</span>
+        </span>
+        <span className="mono" style={{ fontSize: "0.82rem", color: "var(--text-dim)" }}>
+          {a.composite_score.toFixed(1)} ({a.delta > 0 ? "+" : ""}{a.delta} · z {a.z > 0 ? "+" : ""}{a.z})
+        </span>
+      </div>
+    );
+  };
+
+  return (
+    <div className="panel">
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", flexWrap: "wrap", gap: 8, marginBottom: 12 }}>
+        <h3>Écarts de performance</h3>
+        <span style={{ color: "var(--text-dim)", fontSize: "0.76rem" }}>
+          baseline {data.baseline.mean} ± {data.baseline.std} · {data.baseline.n} matchs
+        </span>
+      </div>
+      {data.latest_alert && (
+        <div style={{ fontSize: "0.82rem", color: "var(--gold)", marginBottom: 10 }}>
+          ⚡ Dernier match hors norme : {data.latest_alert.type === "record" ? "sommet personnel" : "en dessous de son standard"}.
+        </div>
+      )}
+      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+        {data.anomalies.map(badge)}
+      </div>
+    </div>
+  );
+}
+
 export default function PlayerProfilePage() {
   const { playerId } = useParams();
   const [history, setHistory] = useState(null);
@@ -179,6 +232,8 @@ export default function PlayerProfilePage() {
               </ResponsiveContainer>
             </div>
           </div>
+
+          {history.anomalies && <AnomaliesPanel data={history.anomalies} />}
 
           <div className="panel">
             <h3 style={{ marginBottom: 14 }}>Historique des matchs</h3>
