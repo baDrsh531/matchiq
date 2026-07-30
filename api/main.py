@@ -8,6 +8,7 @@ from api.routers import (
     leaderboard,
     matches,
     players,
+    predict,
     profiles,
     reports,
     search,
@@ -45,6 +46,7 @@ app.include_router(standings.router)
 app.include_router(search.router)
 app.include_router(leaderboard.router)
 app.include_router(compare.router)
+app.include_router(predict.router)
 
 
 @app.get("/health")

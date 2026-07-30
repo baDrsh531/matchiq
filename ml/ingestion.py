@@ -209,6 +209,35 @@ def fetch_standings(league_id: int, season: int, force_refresh: bool = False) ->
     return flattened
 
 
+def _league_fixtures_cache_path(league_id: int, season: int) -> Path:
+    return DATA_RAW_DIR / f"league_fixtures_{league_id}_{season}.json"
+
+
+def fetch_league_fixtures(league_id: int, season: int, force_refresh: bool = False) -> list[dict]:
+    """Tous les matchs d'une ligue pour une saison, en UN seul appel, avec cache disque.
+
+    C'est la source de données du modèle Elo : un appel suffit à récupérer les
+    ~300 résultats d'une saison (bien plus économe que d'ingérer chaque match via
+    ses 5 endpoints). On ne garde que les métadonnées de résultat — aucune stat
+    joueur n'est nécessaire pour classer les équipes.
+    """
+    cache_file = _league_fixtures_cache_path(league_id, season)
+    if cache_file.exists() and not force_refresh:
+        logger.info("Cache trouvé pour les matchs de la ligue %s/%s, pas d'appel API.",
+                    league_id, season)
+        return json.loads(cache_file.read_text(encoding="utf-8"))
+
+    payload = _get("fixtures", {"league": league_id, "season": season})
+    response = payload.get("response") or []
+    if not response:
+        raise ApiFootballError(
+            f"Aucun match pour la ligue {league_id}, saison {season} "
+            "(le plan gratuit couvre 2022 à 2024)."
+        )
+    cache_file.write_text(json.dumps(response, ensure_ascii=False, indent=2), encoding="utf-8")
+    return response
+
+
 def search_teams(query: str) -> list[dict]:
     """Recherche libre d'équipe par nom (pas de cache : la liste des équipes
     évolue peu mais la recherche doit rester réactive à la frappe)."""

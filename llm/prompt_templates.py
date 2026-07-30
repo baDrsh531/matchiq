@@ -136,6 +136,28 @@ def match_qa_prompt(question: str, context: dict) -> str:
     )
 
 
+def prediction_comment_prompt(prediction: dict) -> str:
+    """Commentaire d'une prédiction pré-match Elo, confrontée au résultat réel.
+
+    Le LLM ne recalcule rien : il reçoit les probabilités V/N/D produites par le
+    modèle Elo (déterministe) AVANT le match, et le score réel, et explique si le
+    résultat confirme ou dément le pronostic — un favori qui assure, une surprise,
+    un nul serré. Aucune probabilité ni score nouveau ne doit apparaître."""
+    return (
+        "Voici une prédiction pré-match produite par un modèle Elo déterministe "
+        "(à partir des seuls résultats passés de la ligue, AVANT le match), et le "
+        "résultat réel :\n\n"
+        f"{_to_json(prediction)}\n\n"
+        "Rédige 2 à 3 phrases qui commentent ce pronostic face au résultat : le "
+        "modèle avait-il vu juste ? S'agit-il d'un favori qui a assuré, d'une "
+        "surprise, d'un résultat dans la marge d'incertitude ? Interprète les "
+        "probabilités (portée : nette domination annoncée, match jugé indécis, "
+        "etc.) sans les réciter platement, et ne mentionne aucun chiffre absent "
+        "des données ci-dessus. N'invente pas de détails de jeu : tu ne disposes "
+        "que du pronostic et du score final."
+    )
+
+
 BLOCK_DELIMITER_TEMPLATE = "[[{key}]]"
 
 

@@ -14,6 +14,7 @@ const TeamProfilePage = lazy(() => import("./pages/TeamProfilePage.jsx"));
 const ComparePage = lazy(() => import("./pages/ComparePage.jsx"));
 const StandingsPage = lazy(() => import("./pages/StandingsPage.jsx"));
 const LeaderboardPage = lazy(() => import("./pages/LeaderboardPage.jsx"));
+const PredictionPage = lazy(() => import("./pages/PredictionPage.jsx"));
 
 function RouteFallback() {
   return <p style={{ color: "var(--text-dim)" }}>Chargement…</p>;
@@ -32,6 +33,7 @@ createRoot(document.getElementById("root")).render(
             <Route path="compare" element={<ComparePage />} />
             <Route path="standings" element={<StandingsPage />} />
             <Route path="leaderboard" element={<LeaderboardPage />} />
+            <Route path="predict" element={<PredictionPage />} />
           </Route>
         </Routes>
       </Suspense>

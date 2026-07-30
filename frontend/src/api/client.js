@@ -59,4 +59,23 @@ export const getLeaderboard = (position, limit = 20) =>
 export const getMatchComparison = (a, b) =>
   api.get("/compare/matches", { params: { a, b } }).then((res) => res.data);
 
+// ── Prédiction pré-match (Elo) ──────────────────────────────────────────────
+export const getPredictionLeagues = () =>
+  api.get("/predict/leagues").then((res) => res.data);
+
+export const getEloTable = (leagueId, season) =>
+  api
+    .get("/predict/table", { params: { league_id: leagueId, season } })
+    .then((res) => res.data);
+
+export const getMatchup = (leagueId, season, home, away) =>
+  api
+    .get("/predict/matchup", { params: { league_id: leagueId, season, home, away } })
+    .then((res) => res.data);
+
+export const getFixturePrediction = (fixtureId, leagueId, season) =>
+  api
+    .get(`/predict/fixture/${fixtureId}`, { params: { league_id: leagueId, season } })
+    .then((res) => res.data);
+
 export default api;

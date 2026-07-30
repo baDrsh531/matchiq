@@ -55,6 +55,32 @@ def _qa_cache_path(fixture_id: int, question_key: str, lang: str = "fr") -> Path
     return DATA_PROCESSED_DIR / f"{fixture_id}_qa_{question_key}{_lang_suffix(lang)}.json"
 
 
+def _prediction_comment_cache_path(league_id: int, season: int, fixture_id: int,
+                                   lang: str = "fr") -> Path:
+    return DATA_PROCESSED_DIR / f"predict_{league_id}_{season}_{fixture_id}{_lang_suffix(lang)}.json"
+
+
+def comment_prediction(league_id: int, season: int, fixture_id: int,
+                       force_refresh: bool = False, lang: str = "fr") -> dict:
+    """Prédiction pré-match Elo + commentaire LLM, mis en cache (comme les rapports).
+
+    Le pronostic est déterministe (module ml.prediction) ; le LLM ne fait que le
+    commenter face au résultat réel. En mode démo, seul le cache répond."""
+    from ml.prediction import predict_fixture
+    from llm.prompt_templates import prediction_comment_prompt
+
+    cache = _prediction_comment_cache_path(league_id, season, fixture_id, lang)
+    if cache.exists() and not force_refresh:
+        return json.loads(cache.read_text(encoding="utf-8"))
+
+    prediction = predict_fixture(league_id, season, fixture_id)
+    comment = generate_report(prediction_comment_prompt(prediction), lang=lang)
+    result = {"league_id": league_id, "season": season, "fixture_id": fixture_id,
+              "lang": lang, "prediction": prediction, "comment": comment}
+    cache.write_text(json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8")
+    return result
+
+
 def _normalize_question(question: str) -> str:
     """Clé de cache stable : deux formulations identiques à la casse / aux
     espaces près partagent la même réponse (et donc un seul appel LLM)."""
