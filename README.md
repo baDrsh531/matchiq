@@ -13,6 +13,21 @@
 
 ![MatchIQ](assets/hero.png)
 
+## Démo en ligne
+
+<!-- Après déploiement, remplacer la ligne ci-dessous par : **[▶ Ouvrir la démo](URL_VERCEL)** -->
+**Démo déployable en un clic** — instance publique en **lecture seule** : elle ne sert que des
+matchs pré-analysés (`demo_data/`) et refuse tout appel sortant, donc **aucune clé, aucun quota,
+aucune facture** possible. Procédure complète : [docs/deploy-demo.md](docs/deploy-demo.md).
+
+> ⏱️ **Premier chargement lent, c'est normal.** Le backend tourne sur l'offre gratuite de Render,
+> qui met l'instance en veille après 15 min d'inactivité : le tout premier appel après une période
+> creuse prend **30 à 60 secondes** (réveil de l'instance), puis tout redevient instantané.
+
+Matchs disponibles dans la démo : **Real Madrid 3–1 PSG** et le match aller **PSG 1–0 Real**
+(le duel se rejoue dans le comparateur H2H), **Arsenal 2–1 Nottingham Forest**, **Almería 0–2 Rayo
+Vallecano** — chacun avec son rapport bilingue FR/EN.
+
 ## Pourquoi ce projet
 
 Les statistiques brutes d'un match de foot (passes, tirs, duels, xG) sont abondantes mais muettes :
