@@ -30,6 +30,10 @@ export const getReport = (fixtureId, refresh = false, lang = "fr") =>
 export const askMatch = (fixtureId, q, lang = "fr") =>
   api.get(`/matches/${fixtureId}/ask`, { params: { q, lang } }).then((res) => res.data);
 
+// Revue de presse externe (contexte cité, non vérifié, séparé des données calculées).
+export const getMatchPress = (fixtureId, limit = 5) =>
+  api.get(`/matches/${fixtureId}/press`, { params: { limit } }).then((res) => res.data);
+
 export const getPlayerHistory = (playerId) =>
   api.get(`/players/${playerId}/history`).then((res) => res.data);
 

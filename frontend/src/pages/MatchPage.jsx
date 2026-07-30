@@ -8,6 +8,7 @@ import RadarComparison from "../components/RadarComparison";
 import PlayerDetailCard from "../components/PlayerDetailCard";
 import Timeline from "../components/Timeline";
 import AIPanel from "../components/AIPanel";
+import PressReview from "../components/PressReview";
 import ShareMOTMButton from "../components/ShareMOTMButton";
 import FormationPitch from "../components/FormationPitch";
 import { MatchSkeleton } from "../components/Skeleton";
@@ -152,6 +153,8 @@ export default function MatchPage() {
             <Timeline events={match.events} />
             <AIPanel fixtureId={fixtureId} />
           </div>
+
+          <PressReview fixtureId={fixtureId} />
         </div>
       )}
     </>
