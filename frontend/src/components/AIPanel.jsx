@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { askMatch, getReport, reportPdfUrl } from "../api/client";
+import { useEffect, useRef, useState } from "react";
+import { chatMatch, getReport, reportPdfUrl } from "../api/client";
 
 const SUGGESTIONS = [
   "Pourquoi ce joueur est-il l'homme du match ?",
@@ -38,105 +38,109 @@ function LangToggle({ lang, onChange }) {
   );
 }
 
-function MatchQA({ fixtureId, lang }) {
-  const [question, setQuestion] = useState("");
-  const [answer, setAnswer] = useState(null);
-  const [status, setStatus] = useState("idle"); // idle | loading | error | done
+// Conversation multi-tours : le fil est conservé, le LLM résout « et lui ? » /
+// « pourquoi ? » depuis les tours précédents (réponses toujours ancrées aux données).
+function MatchChat({ fixtureId, lang }) {
+  const [messages, setMessages] = useState([]); // {role:"user"|"assistant", content}
+  const [input, setInput] = useState("");
+  const [status, setStatus] = useState("idle"); // idle | loading | error
   const [errorMessage, setErrorMessage] = useState("");
+  const threadRef = useRef(null);
 
-  // La réponse est dans une langue donnée : si on change de langue, on la retire
-  // pour ne pas afficher une réponse FR sous un libellé EN (et inversement).
+  // Changer de langue repart d'une conversation vierge (cohérence de langue).
   useEffect(() => {
-    setAnswer(null);
+    setMessages([]);
     setStatus("idle");
+    setErrorMessage("");
   }, [lang]);
 
-  const ask = async (q) => {
-    const text = (q ?? question).trim();
-    if (text.length < 3) return;
-    setQuestion(text);
+  useEffect(() => {
+    if (threadRef.current) threadRef.current.scrollTop = threadRef.current.scrollHeight;
+  }, [messages, status]);
+
+  const send = async (q) => {
+    const text = (q ?? input).trim();
+    if (text.length < 3 || status === "loading") return;
+    const next = [...messages, { role: "user", content: text }];
+    setMessages(next);
+    setInput("");
     setStatus("loading");
-    setAnswer(null);
+    setErrorMessage("");
     try {
-      const data = await askMatch(fixtureId, text, lang);
-      setAnswer(data.answer);
-      setStatus("done");
+      const data = await chatMatch(fixtureId, next, lang);
+      setMessages([...next, { role: "assistant", content: data.answer }]);
+      setStatus("idle");
     } catch (err) {
-      setErrorMessage(
-        err.response?.data?.detail || "Impossible de répondre à cette question pour le moment."
-      );
+      setErrorMessage(err.response?.data?.detail || "Impossible de répondre pour le moment.");
       setStatus("error");
     }
   };
 
   return (
-    <section
-      style={{
-        borderBottom: "1px solid var(--border)",
-        paddingBottom: 16,
-        marginBottom: 4,
-      }}
-    >
-      <div style={{ fontSize: "0.75rem", color: "var(--gold)", marginBottom: 8 }}>
-        POSER UNE QUESTION SUR CE MATCH
+    <section style={{ borderBottom: "1px solid var(--border)", paddingBottom: 16, marginBottom: 4 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+        <div style={{ fontSize: "0.75rem", color: "var(--gold)" }}>DISCUTER DE CE MATCH</div>
+        {messages.length > 0 && (
+          <button
+            onClick={() => { setMessages([]); setStatus("idle"); }}
+            style={{ background: "transparent", border: "none", color: "var(--text-dim)", fontSize: "0.72rem", cursor: "pointer" }}
+          >
+            Réinitialiser
+          </button>
+        )}
       </div>
 
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          ask();
-        }}
-        style={{ display: "flex", gap: 8 }}
-      >
+      {messages.length > 0 && (
+        <div ref={threadRef} style={{ display: "flex", flexDirection: "column", gap: 8, maxHeight: 260, overflowY: "auto", marginBottom: 10 }}>
+          {messages.map((m, i) => (
+            <div
+              key={i}
+              style={{
+                alignSelf: m.role === "user" ? "flex-end" : "flex-start",
+                maxWidth: "85%",
+                background: m.role === "user" ? "var(--gold)" : "var(--bg-panel-raised)",
+                color: m.role === "user" ? "#141414" : "var(--text)",
+                borderRadius: 12,
+                padding: "8px 12px",
+                fontSize: "0.9rem",
+                lineHeight: 1.5,
+              }}
+            >
+              {m.content}
+            </div>
+          ))}
+          {status === "loading" && (
+            <div style={{ alignSelf: "flex-start", color: "var(--text-dim)", fontSize: "0.85rem", padding: "4px 12px" }}>
+              …
+            </div>
+          )}
+        </div>
+      )}
+
+      <form onSubmit={(e) => { e.preventDefault(); send(); }} style={{ display: "flex", gap: 8 }}>
         <input
-          value={question}
-          onChange={(e) => setQuestion(e.target.value)}
-          placeholder="Ex : pourquoi ce joueur a-t-il la meilleure note ?"
-          aria-label="Question sur le match"
-          style={{
-            flex: 1,
-            minWidth: 0,
-            background: "var(--bg-panel-raised)",
-            border: "1px solid var(--border)",
-            borderRadius: 8,
-            color: "var(--text)",
-            padding: "8px 12px",
-            fontSize: "0.9rem",
-          }}
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          placeholder={messages.length ? "Poser une question de suivi…" : "Ex : pourquoi ce joueur a-t-il la meilleure note ?"}
+          aria-label="Message"
+          style={{ flex: 1, minWidth: 0, background: "var(--bg-panel-raised)", border: "1px solid var(--border)", borderRadius: 8, color: "var(--text)", padding: "8px 12px", fontSize: "0.9rem" }}
         />
         <button
           type="submit"
-          disabled={status === "loading" || question.trim().length < 3}
-          style={{
-            background: "var(--gold)",
-            border: "none",
-            borderRadius: 8,
-            color: "#141414",
-            fontWeight: 600,
-            padding: "8px 16px",
-            cursor: status === "loading" ? "default" : "pointer",
-            opacity: status === "loading" || question.trim().length < 3 ? 0.6 : 1,
-          }}
+          disabled={status === "loading" || input.trim().length < 3}
+          style={{ background: "var(--gold)", border: "none", borderRadius: 8, color: "#141414", fontWeight: 600, padding: "8px 16px", cursor: "pointer", opacity: status === "loading" || input.trim().length < 3 ? 0.6 : 1 }}
         >
-          Demander
+          Envoyer
         </button>
       </form>
 
-      {status === "idle" && (
+      {messages.length === 0 && status !== "loading" && (
         <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 10 }}>
           {SUGGESTIONS.map((s) => (
             <button
               key={s}
-              onClick={() => ask(s)}
-              style={{
-                background: "transparent",
-                border: "1px solid var(--border)",
-                borderRadius: 999,
-                color: "var(--text-dim)",
-                fontSize: "0.76rem",
-                padding: "4px 10px",
-                cursor: "pointer",
-              }}
+              onClick={() => send(s)}
+              style={{ background: "transparent", border: "1px solid var(--border)", borderRadius: 999, color: "var(--text-dim)", fontSize: "0.76rem", padding: "4px 10px", cursor: "pointer" }}
             >
               {s}
             </button>
@@ -144,19 +148,10 @@ function MatchQA({ fixtureId, lang }) {
         </div>
       )}
 
-      {status === "loading" && (
-        <p style={{ color: "var(--text-dim)", marginTop: 10 }}>Recherche dans les données du match…</p>
-      )}
       {status === "error" && <p style={{ color: "var(--red)", marginTop: 10 }}>{errorMessage}</p>}
-      {status === "done" && answer && (
-        <p style={{ lineHeight: 1.6, marginTop: 12 }}>{answer}</p>
-      )}
-
-      {status === "done" && (
-        <p style={{ fontSize: "0.7rem", color: "var(--text-dim)", marginTop: 8 }}>
-          Réponse fondée uniquement sur les scores et statistiques calculés de ce match.
-        </p>
-      )}
+      <p style={{ fontSize: "0.7rem", color: "var(--text-dim)", marginTop: 8 }}>
+        Réponses fondées uniquement sur les scores et statistiques calculés de ce match.
+      </p>
     </section>
   );
 }
@@ -194,7 +189,7 @@ export default function AIPanel({ fixtureId }) {
         <LangToggle lang={lang} onChange={setLang} />
       </div>
 
-      <MatchQA fixtureId={fixtureId} lang={lang} />
+      <MatchChat fixtureId={fixtureId} lang={lang} />
 
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <h3>Analyse IA</h3>

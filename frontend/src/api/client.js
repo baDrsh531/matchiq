@@ -34,6 +34,10 @@ export const askMatch = (fixtureId, q, lang = "fr") =>
 export const getMatchPress = (fixtureId, limit = 5) =>
   api.get(`/matches/${fixtureId}/press`, { params: { limit } }).then((res) => res.data);
 
+// Conversation multi-tours sur un match (garde le fil ; POST car corps = historique).
+export const chatMatch = (fixtureId, messages, lang = "fr") =>
+  api.post(`/matches/${fixtureId}/chat`, { messages, lang }).then((res) => res.data);
+
 export const getPlayerHistory = (playerId) =>
   api.get(`/players/${playerId}/history`).then((res) => res.data);
 

@@ -136,6 +136,34 @@ def match_qa_prompt(question: str, context: dict) -> str:
     )
 
 
+def match_chat_prompt(history: list[dict], context: dict) -> str:
+    """Conversation multi-tours ancrée sur un match : comme la Q&R, mais le LLM
+    garde le fil des échanges précédents. Les données calculées restent la SEULE
+    source de vérité ; l'historique sert la continuité (« et lui ? », « pourquoi ? »),
+    pas à introduire des faits nouveaux.
+
+    `history` = liste de tours {role: "user"|"assistant", content}, le dernier
+    étant la nouvelle question de l'utilisateur."""
+    convo = "\n".join(
+        f"{'Utilisateur' if m.get('role') == 'user' else 'Assistant'} : {m.get('content', '')}"
+        for m in history
+    )
+    return (
+        "Voici les données calculées (moteur ML) pour un match de football : score "
+        "final, classement des joueurs par score composite avec contributions et "
+        "points forts/faibles, et déroulé du match.\n\n"
+        f"{_to_json(context)}\n\n"
+        "Conversation en cours (garde le fil, résous les références du type « et "
+        "lui ? », « pourquoi ? » à partir des tours précédents) :\n"
+        f"{convo}\n\n"
+        "Réponds au DERNIER message de l'utilisateur en t'appuyant STRICTEMENT et "
+        "UNIQUEMENT sur les données ci-dessus — jamais sur tes connaissances "
+        "générales. Interprète les chiffres (portée tactique) en 1 à 4 phrases, "
+        "style direct. Si l'information demandée n'est pas dans les données, dis-le "
+        "au lieu d'inventer. N'introduis jamais un chiffre absent des données."
+    )
+
+
 def prediction_comment_prompt(prediction: dict) -> str:
     """Commentaire d'une prédiction pré-match Elo, confrontée au résultat réel.
 

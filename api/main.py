@@ -30,7 +30,9 @@ _EXTRA_ORIGINS = [o.strip() for o in os.getenv("CORS_ORIGINS", "").split(",") if
 app.add_middleware(
     CORSMiddleware,
     allow_origins=_DEFAULT_ORIGINS + _EXTRA_ORIGINS,
-    allow_methods=["GET"],
+    # POST est requis par le chat multi-tours (corps = historique de conversation) ;
+    # aucun endpoint n'écrit en base à partir d'une entrée utilisateur.
+    allow_methods=["GET", "POST"],
     allow_headers=["*"],
 )
 

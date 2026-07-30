@@ -26,6 +26,7 @@ from llm.llm_client import generate_report
 from llm.prompt_templates import (
     batch_player_analysis_prompt,
     batch_tactical_suggestions_prompt,
+    match_chat_prompt,
     match_qa_prompt,
     motm_report_prompt,
     player_analysis_prompt,
@@ -247,6 +248,22 @@ def answer_match_question(
 
     cache_file.write_text(json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8")
     return result
+
+
+def chat_match(fixture_id: int, messages: list[dict], lang: str = "fr") -> dict:
+    """Conversation multi-tours sur un match : évolution de la Q&R qui garde le
+    contexte des échanges. Non mise en cache (chaque conversation est unique) ;
+    le contexte reste les seules données calculées (LLM ancré).
+
+    `messages` = tours {role, content}, le dernier étant la question courante."""
+    if not messages or messages[-1].get("role") != "user":
+        raise ValueError("Le dernier message doit être une question de l'utilisateur.")
+    # Fenêtre glissante : on borne l'historique pour ne pas gonfler le prompt.
+    history = [{"role": m.get("role"), "content": str(m.get("content", "")).strip()}
+               for m in messages if m.get("content")][-8:]
+    context = _match_qa_context(fixture_id)
+    answer = generate_report(match_chat_prompt(history, context), lang=lang)
+    return {"answer": answer}
 
 
 def generate_match_report(fixture_id: int, force_refresh: bool = False, lang: str = "fr") -> dict:

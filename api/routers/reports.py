@@ -1,8 +1,9 @@
 import logging
 
 from fastapi import APIRouter, HTTPException, Response
+from pydantic import BaseModel
 
-from llm.report_generator import answer_match_question, generate_match_report
+from llm.report_generator import answer_match_question, chat_match, generate_match_report
 from ml.ingestion import ApiFootballError, RateLimitError, build_match_summary, fetch_fixture
 from ml.scoring_engine import rank_players
 from persistence.database import SessionLocal
@@ -101,6 +102,38 @@ def ask_match(fixture_id: int, q: str, refresh: bool = False, lang: str = "fr"):
         return answer_match_question(fixture_id, question, force_refresh=refresh, lang=_lang(lang))
     except ValueError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except RateLimitError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    except ApiFootballError as exc:
+        if "introuvable" in str(exc):
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    except RuntimeError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Erreur serveur inattendue: {exc}") from exc
+
+
+class ChatMessage(BaseModel):
+    role: str
+    content: str
+
+
+class ChatRequest(BaseModel):
+    messages: list[ChatMessage]
+    lang: str = "fr"
+
+
+@router.post("/{fixture_id}/chat")
+def chat(fixture_id: int, body: ChatRequest):
+    """Conversation multi-tours sur un match : évolution de la Q&R qui garde le fil
+    des échanges. Réponse fondée uniquement sur les données calculées (LLM ancré),
+    non mise en cache. En mode démo, la génération LLM est désactivée (503)."""
+    messages = [{"role": m.role, "content": m.content} for m in body.messages]
+    try:
+        return chat_match(fixture_id, messages, lang=_lang(body.lang))
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
     except RateLimitError as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
     except ApiFootballError as exc:
