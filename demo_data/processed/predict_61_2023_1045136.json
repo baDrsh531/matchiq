@@ -1,0 +1,30 @@
+{
+  "league_id": 61,
+  "season": 2023,
+  "fixture_id": 1045136,
+  "lang": "fr",
+  "prediction": {
+    "home": 0.2331,
+    "draw": 0.1813,
+    "away": 0.5855,
+    "rating_home": 1435.7,
+    "rating_away": 1628.6,
+    "rating_diff": -192.9,
+    "games_home": 29,
+    "games_away": 29,
+    "home_name": "Lorient",
+    "away_name": "Paris Saint Germain",
+    "date": "2024-04-24T17:00:00+00:00",
+    "fixture_id": 1045136,
+    "trained_on": 267,
+    "result": {
+      "home_goals": 1,
+      "away_goals": 4,
+      "outcome": "away",
+      "predicted": "away",
+      "hit": true,
+      "prob_of_actual": 0.5855
+    }
+  },
+  "comment": "Le modèle a parfaitement anticipé la domination parisienne, une prédiction justifiée par un écart de niveau de près de 193 points qui reflétait une supériorité technique claire. Le résultat final, avec quatre buts marqués contre un seul, confirme que le favori n'a pas seulement gagné, mais a imposé son rythme de jeu de manière écrasante. Il s'agit d'une victoire attendue et maîtrisée, loin des incertitudes d'un match indécis."
+}
