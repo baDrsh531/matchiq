@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link } from "react-router";
 import { motion } from "framer-motion";
 import { getLeaderboard } from "../api/client";
 import { SkeletonBlock } from "../components/Skeleton";

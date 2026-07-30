@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from "framer-motion";
-import { NavLink, Outlet, useLocation } from "react-router-dom";
+import { NavLink, Outlet, useLocation } from "react-router";
 
 const NAV_ITEMS = [
   { to: "/", label: "Accueil", icon: "🏠", end: true },
