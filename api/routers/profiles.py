@@ -6,8 +6,9 @@ from fastapi import APIRouter, HTTPException
 
 from ml.anomalies import detect_anomalies
 from ml.insights import form_summary
+from ml.similarity import similar_players
 from persistence.database import SessionLocal
-from persistence.repository import get_player_history, get_team_history
+from persistence.repository import get_player_history, get_team_history, player_profiles
 
 router = APIRouter(tags=["profiles"])
 
@@ -31,6 +32,33 @@ def get_player_profile(player_id: int):
     history["form"] = form_summary(history["matches"])
     history["anomalies"] = detect_anomalies(history["matches"])
     return history
+
+
+@router.get("/players/{player_id}/similar")
+def get_similar_players(player_id: int, limit: int = 5):
+    """Joueurs au profil statistique le plus proche (même poste), par similarité
+    cosinus sur les contributions standardisées. Agrégé depuis la base, sans coût
+    de quota API-Football."""
+    session = SessionLocal()
+    try:
+        history = get_player_history(session, player_id)
+        if history is None:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Aucun historique pour le joueur {player_id}.",
+            )
+        pool = player_profiles(session, history["position"])
+    finally:
+        session.close()
+
+    results = similar_players(player_id, pool, limit=limit)
+    return {
+        "player_id": player_id,
+        "name": history["name"],
+        "position": history["position"],
+        "pool_size": len(pool),
+        "similar": results,
+    }
 
 
 @router.get("/teams/{team_id}/history")

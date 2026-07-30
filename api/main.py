@@ -4,6 +4,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from api.routers import (
+    clustering,
     compare,
     leaderboard,
     matches,
@@ -47,6 +48,7 @@ app.include_router(search.router)
 app.include_router(leaderboard.router)
 app.include_router(compare.router)
 app.include_router(predict.router)
+app.include_router(clustering.router)
 
 
 @app.get("/health")

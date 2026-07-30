@@ -10,7 +10,7 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import { motion } from "framer-motion";
-import { getPlayerHistory } from "../api/client";
+import { getPlayerHistory, getSimilarPlayers } from "../api/client";
 import { SkeletonBlock } from "../components/Skeleton";
 
 const SILHOUETTE =
@@ -107,19 +107,61 @@ function AnomaliesPanel({ data }) {
   );
 }
 
+// Joueurs au profil le plus proche (même poste), via similarité cosinus.
+function SimilarPlayers({ data }) {
+  if (!data || !data.similar.length) return null;
+  return (
+    <div className="panel">
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", flexWrap: "wrap", gap: 8, marginBottom: 12 }}>
+        <h3>Joueurs au style proche</h3>
+        <span style={{ color: "var(--text-dim)", fontSize: "0.76rem" }}>
+          même poste · {data.pool_size} comparés
+        </span>
+      </div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+        {data.similar.map((p) => (
+          <Link
+            key={p.player_id}
+            to={`/player/${p.player_id}`}
+            style={{ display: "grid", gridTemplateColumns: "34px 1fr auto", gap: 12, alignItems: "center", padding: "6px 8px", borderRadius: 8, color: "var(--text)", textDecoration: "none" }}
+            onMouseEnter={(e) => (e.currentTarget.style.background = "var(--bg-panel-raised)")}
+            onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+          >
+            <img
+              src={p.photo_url || SILHOUETTE}
+              onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = SILHOUETTE; }}
+              alt="" style={{ width: 34, height: 34, borderRadius: "50%", objectFit: "cover" }}
+            />
+            <div style={{ minWidth: 0 }}>
+              <div style={{ fontSize: "0.88rem", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{p.name}</div>
+              <div style={{ color: "var(--text-dim)", fontSize: "0.76rem" }}>{p.team_name}</div>
+            </div>
+            <span className="mono" title="similarité cosinus (1 = profil identique)" style={{ color: p.similarity > 0.5 ? "var(--green)" : "var(--text-dim)", fontSize: "0.85rem", fontWeight: 600 }}>
+              {Math.round(p.similarity * 100)}%
+            </span>
+          </Link>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export default function PlayerProfilePage() {
   const { playerId } = useParams();
   const [history, setHistory] = useState(null);
+  const [similar, setSimilar] = useState(null);
   const [status, setStatus] = useState("loading");
 
   useEffect(() => {
     setStatus("loading");
+    setSimilar(null);
     getPlayerHistory(playerId)
       .then((data) => {
         setHistory(data);
         setStatus("done");
       })
       .catch(() => setStatus("error"));
+    getSimilarPlayers(playerId).then(setSimilar).catch(() => setSimilar(null));
   }, [playerId]);
 
   return (
@@ -234,6 +276,8 @@ export default function PlayerProfilePage() {
           </div>
 
           {history.anomalies && <AnomaliesPanel data={history.anomalies} />}
+
+          <SimilarPlayers data={similar} />
 
           <div className="panel">
             <h3 style={{ marginBottom: 14 }}>Historique des matchs</h3>

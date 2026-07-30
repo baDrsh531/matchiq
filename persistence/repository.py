@@ -235,6 +235,45 @@ def available_positions(session: Session) -> list[str]:
     return sorted(r[0] for r in rows if r[0])
 
 
+def player_profiles(session: Session, position: str | None = None) -> list[dict]:
+    """Profil statistique moyen de chaque joueur, agrégé sur tous ses matchs.
+
+    Sert de vecteur de comparaison pour la recherche de joueurs au style proche :
+    chaque joueur est résumé par la moyenne de ses contributions `breakdown` (les
+    catégories dépendent du poste, d'où le filtre `position`). Un seul instantané
+    par joueur — on moyenne quand il a plusieurs matchs."""
+    query = session.query(PlayerScoreRecord)
+    if position:
+        query = query.filter(PlayerScoreRecord.position == position)
+
+    by_player: dict[int, dict] = {}
+    for r in query.all():
+        breakdown = json.loads(r.breakdown_json) if r.breakdown_json else {}
+        entry = by_player.setdefault(r.player_id, {
+            "player_id": r.player_id, "name": r.name, "photo_url": r.photo_url,
+            "team_id": r.team_id, "team_name": r.team_name, "position": r.position,
+            "appearances": 0, "score_sum": 0.0, "breakdown_sum": {},
+        })
+        entry["name"], entry["photo_url"] = r.name, r.photo_url          # garde le + récent
+        entry["team_id"], entry["team_name"] = r.team_id, r.team_name
+        entry["appearances"] += 1
+        entry["score_sum"] += r.composite_score or 0.0
+        for k, v in breakdown.items():
+            entry["breakdown_sum"][k] = entry["breakdown_sum"].get(k, 0.0) + float(v)
+
+    profiles = []
+    for e in by_player.values():
+        n = e["appearances"]
+        profiles.append({
+            "player_id": e["player_id"], "name": e["name"], "photo_url": e["photo_url"],
+            "team_id": e["team_id"], "team_name": e["team_name"], "position": e["position"],
+            "appearances": n,
+            "average_score": round(e["score_sum"] / n, 2) if n else 0.0,
+            "breakdown": {k: v / n for k, v in e["breakdown_sum"].items()},
+        })
+    return profiles
+
+
 def top_performances(session: Session, limit: int = 20, position: str | None = None) -> list[dict]:
     """Palmarès : meilleures performances individuelles (score composite d'un
     joueur sur un match) parmi tous les matchs analysés. DB uniquement, aucun

@@ -158,6 +158,20 @@ def fetch_fixture(fixture_id: int, force_refresh: bool = False) -> dict:
     return combined
 
 
+def load_cached_fixture(fixture_id: int) -> dict | None:
+    """Renvoie le fixture combiné UNIQUEMENT s'il est déjà en cache complet, sinon
+    None — ne déclenche JAMAIS d'appel API. À utiliser dans les traitements de
+    masse (clustering, agrégats) pour ne pas consommer le quota par surprise."""
+    cache_file = _cache_path(fixture_id)
+    if not cache_file.exists():
+        return None
+    try:
+        combined = json.loads(cache_file.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError):
+        return None
+    return combined if all(key in combined for key in _REQUIRED_KEYS) else None
+
+
 def build_match_summary(fixture_id: int, raw: dict) -> dict:
     """Transforme la réponse combinée de fetch_fixture en résumé exploitable
     par l'API (équipes, score, statut, logos) et par la persistance."""

@@ -33,6 +33,9 @@ export const askMatch = (fixtureId, q, lang = "fr") =>
 export const getPlayerHistory = (playerId) =>
   api.get(`/players/${playerId}/history`).then((res) => res.data);
 
+export const getSimilarPlayers = (playerId, limit = 5) =>
+  api.get(`/players/${playerId}/similar`, { params: { limit } }).then((res) => res.data);
+
 export const getTeamHistory = (teamId) =>
   api.get(`/teams/${teamId}/history`).then((res) => res.data);
 
