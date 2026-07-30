@@ -1,6 +1,8 @@
 """Client LLM à backend interchangeable : Google Gemini (par défaut) ou tout
 serveur compatible OpenAI (vLLM, llama.cpp, Ollama, LM Studio…). Le choix se
 fait via LLM_PROVIDER dans la configuration."""
+import time
+
 import requests
 from google import genai
 
@@ -13,7 +15,13 @@ from config import (
     OPENAI_MODEL,
     require_gemini_key,
 )
+from llm.metrics import record_call
 from llm.prompt_templates import system_prompt
+
+
+def _estimate_tokens(text: str) -> int:
+    """Estimation grossière (≈ 4 caractères/token) quand l'API n'expose pas l'usage."""
+    return max(0, len(text or "") // 4)
 
 DEFAULT_MODEL = "gemini-3.5-flash"
 _OPENAI_TIMEOUT = 120
@@ -32,8 +40,11 @@ def _get_client() -> genai.Client:
     return _client
 
 
-def _generate_openai(prompt: str, lang: str) -> str:
-    """Génération via un endpoint compatible OpenAI (/v1/chat/completions)."""
+def _generate_openai(prompt: str, lang: str) -> tuple[str, dict]:
+    """Génération via un endpoint compatible OpenAI (/v1/chat/completions).
+
+    Renvoie (contenu, usage) où usage porte prompt_tokens/completion_tokens quand
+    le serveur les expose (bloc `usage` standard OpenAI)."""
     if not OPENAI_BASE_URL or not OPENAI_MODEL:
         raise RuntimeError(
             "LLM_PROVIDER=openai mais OPENAI_BASE_URL ou OPENAI_MODEL manquant dans .env."
@@ -66,10 +77,15 @@ def _generate_openai(prompt: str, lang: str) -> str:
     if resp.status_code != 200:
         raise RuntimeError(f"Erreur HTTP {resp.status_code} du LLM: {resp.text[:300]}")
 
-    content = (resp.json()["choices"][0]["message"].get("content") or "").strip()
+    payload = resp.json()
+    content = (payload["choices"][0]["message"].get("content") or "").strip()
     if not content:
         raise RuntimeError("Le LLM a renvoyé une réponse vide.")
-    return content
+    usage = payload.get("usage") or {}
+    return content, {
+        "prompt_tokens": usage.get("prompt_tokens"),
+        "completion_tokens": usage.get("completion_tokens"),
+    }
 
 
 def generate_report(prompt: str, model: str = DEFAULT_MODEL, lang: str = "fr") -> str:
@@ -91,8 +107,24 @@ def generate_report(prompt: str, model: str = DEFAULT_MODEL, lang: str = "fr") -
             "La génération LLM est désactivée sur cette instance publique."
         )
 
+    started = time.perf_counter()
+
     if LLM_PROVIDER == "openai":
-        return _generate_openai(prompt, lang)
+        try:
+            content, usage = _generate_openai(prompt, lang)
+        except Exception as exc:
+            record_call("openai", OPENAI_MODEL or "?", _estimate_tokens(prompt), 0,
+                        (time.perf_counter() - started) * 1000, ok=False,
+                        error=str(exc), estimated=True)
+            raise
+        pt = usage.get("prompt_tokens")
+        ct = usage.get("completion_tokens")
+        estimated = pt is None or ct is None
+        record_call("openai", OPENAI_MODEL or "?",
+                    pt if pt is not None else _estimate_tokens(prompt),
+                    ct if ct is not None else _estimate_tokens(content),
+                    (time.perf_counter() - started) * 1000, ok=True, estimated=estimated)
+        return content
 
     client = _get_client()
     try:
@@ -102,6 +134,9 @@ def generate_report(prompt: str, model: str = DEFAULT_MODEL, lang: str = "fr") -
             input=prompt,
         )
     except Exception as exc:
+        record_call("gemini", model, _estimate_tokens(prompt), 0,
+                    (time.perf_counter() - started) * 1000, ok=False,
+                    error=str(exc), estimated=True)
         status_code = getattr(exc, "status_code", None) or getattr(exc, "code", None)
         if status_code == 429:
             raise LLMQuotaError(
@@ -110,4 +145,14 @@ def generate_report(prompt: str, model: str = DEFAULT_MODEL, lang: str = "fr") -
             ) from exc
         raise RuntimeError(f"Erreur lors de l'appel au LLM Gemini: {exc}") from exc
 
-    return interaction.output_text
+    output = interaction.output_text
+    # Le SDK expose parfois usage_metadata (tokens réels) ; sinon on estime.
+    meta = getattr(interaction, "usage_metadata", None)
+    pt = getattr(meta, "input_tokens", None) or getattr(meta, "prompt_token_count", None)
+    ct = getattr(meta, "output_tokens", None) or getattr(meta, "candidates_token_count", None)
+    estimated = pt is None or ct is None
+    record_call("gemini", model,
+                pt if pt is not None else _estimate_tokens(prompt),
+                ct if ct is not None else _estimate_tokens(output),
+                (time.perf_counter() - started) * 1000, ok=True, estimated=estimated)
+    return output

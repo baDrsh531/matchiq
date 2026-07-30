@@ -36,6 +36,10 @@ export const getPlayerHistory = (playerId) =>
 export const getSimilarPlayers = (playerId, limit = 5) =>
   api.get(`/players/${playerId}/similar`, { params: { limit } }).then((res) => res.data);
 
+// Lien direct du PDF de scouting (téléchargé/ouvert par le navigateur).
+export const scoutingPdfUrl = (playerId, lang = "fr") =>
+  `${API_BASE}/players/${playerId}/scouting.pdf?lang=${lang}`;
+
 export const getTeamHistory = (teamId) =>
   api.get(`/teams/${teamId}/history`).then((res) => res.data);
 
@@ -80,5 +84,9 @@ export const getFixturePrediction = (fixtureId, leagueId, season) =>
   api
     .get(`/predict/fixture/${fixtureId}`, { params: { league_id: leagueId, season } })
     .then((res) => res.data);
+
+// ── Monitoring LLM (FinOps) ─────────────────────────────────────────────────
+export const getLlmMetrics = (recent = 20) =>
+  api.get("/llm/metrics", { params: { recent } }).then((res) => res.data);
 
 export default api;

@@ -3,12 +3,15 @@
 elles ne couvrent que les matchs déjà analysés via /matches/{id}/players.
 """
 from fastapi import APIRouter, HTTPException
+from fastapi.responses import Response
 
 from ml.anomalies import detect_anomalies
 from ml.insights import form_summary
 from ml.similarity import similar_players
 from persistence.database import SessionLocal
 from persistence.repository import get_player_history, get_team_history, player_profiles
+from reporting.pdf_report import build_scouting_pdf
+from reporting.scouting import build_scouting_data
 
 router = APIRouter(tags=["profiles"])
 
@@ -59,6 +62,28 @@ def get_similar_players(player_id: int, limit: int = 5):
         "pool_size": len(pool),
         "similar": results,
     }
+
+
+@router.get("/players/{player_id}/scouting.pdf")
+def get_scouting_pdf(player_id: int, lang: str = "fr"):
+    """Fiche de scouting PDF (résumé exécutif, comparaison à la moyenne du poste,
+    profils proches, écarts de performance). Données agrégées, sans coût de quota."""
+    lang = lang if lang in ("fr", "en") else "fr"
+    session = SessionLocal()
+    try:
+        data = build_scouting_data(session, player_id)
+    finally:
+        session.close()
+    if data is None:
+        raise HTTPException(status_code=404, detail=f"Aucun historique pour le joueur {player_id}.")
+
+    pdf = build_scouting_pdf(data, lang=lang)
+    filename = f"scouting_{player_id}_{lang}.pdf"
+    return Response(
+        content=pdf,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'inline; filename="{filename}"'},
+    )
 
 
 @router.get("/teams/{team_id}/history")

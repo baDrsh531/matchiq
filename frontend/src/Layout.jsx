@@ -7,6 +7,7 @@ const NAV_ITEMS = [
   { to: "/leaderboard", label: "Palmarès", icon: "🥇" },
   { to: "/standings", label: "Classement", icon: "🏆" },
   { to: "/compare", label: "Comparateur", icon: "⚖️" },
+  { to: "/llm-ops", label: "Monitoring LLM", icon: "📊" },
 ];
 
 function NavItem({ to, label, icon, end }) {

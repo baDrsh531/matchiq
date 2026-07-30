@@ -7,6 +7,7 @@ from api.routers import (
     clustering,
     compare,
     leaderboard,
+    llm_ops,
     matches,
     players,
     predict,
@@ -49,6 +50,7 @@ app.include_router(leaderboard.router)
 app.include_router(compare.router)
 app.include_router(predict.router)
 app.include_router(clustering.router)
+app.include_router(llm_ops.router)
 
 
 @app.get("/health")

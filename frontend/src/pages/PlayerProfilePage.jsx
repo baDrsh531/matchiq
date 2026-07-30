@@ -10,7 +10,7 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import { motion } from "framer-motion";
-import { getPlayerHistory, getSimilarPlayers } from "../api/client";
+import { getPlayerHistory, getSimilarPlayers, scoutingPdfUrl } from "../api/client";
 import { SkeletonBlock } from "../components/Skeleton";
 
 const SILHOUETTE =
@@ -228,6 +228,15 @@ export default function PlayerProfilePage() {
               <div style={{ color: "var(--text-dim)", fontSize: "0.75rem" }}>
                 MOYENNE / {history.matches_played} MATCH{history.matches_played > 1 ? "S" : ""}
               </div>
+              <a
+                href={scoutingPdfUrl(playerId)}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ display: "inline-block", marginTop: 10, fontSize: "0.76rem", color: "var(--text-dim)",
+                         border: "1px solid var(--border)", borderRadius: 6, padding: "5px 10px", textDecoration: "none" }}
+              >
+                📄 Fiche scouting (PDF)
+              </a>
             </div>
           </div>
 

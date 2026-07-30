@@ -6,6 +6,13 @@ from llm import llm_client
 from llm.prompt_templates import system_prompt
 
 
+@pytest.fixture(autouse=True)
+def _silence_metrics(monkeypatch):
+    # Le client instrumente chaque appel (llm/metrics) : on neutralise l'écriture
+    # pour que les tests n'écrivent pas dans le fichier de métriques réel.
+    monkeypatch.setattr(llm_client, "record_call", lambda *a, **k: None)
+
+
 class _FakeInteractions:
     def __init__(self):
         self.last_kwargs = None
