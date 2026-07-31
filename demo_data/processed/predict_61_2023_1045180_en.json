@@ -1,0 +1,30 @@
+{
+  "league_id": 61,
+  "season": 2023,
+  "fixture_id": 1045180,
+  "lang": "en",
+  "prediction": {
+    "home": 0.7116,
+    "draw": 0.1262,
+    "away": 0.1622,
+    "rating_home": 1588.0,
+    "rating_away": 1438.5,
+    "rating_diff": 149.6,
+    "games_home": 33,
+    "games_away": 33,
+    "home_name": "Monaco",
+    "away_name": "Nantes",
+    "date": "2024-05-19T19:00:00+00:00",
+    "fixture_id": 1045180,
+    "trained_on": 297,
+    "result": {
+      "home_goals": 4,
+      "away_goals": 0,
+      "outcome": "home",
+      "predicted": "home",
+      "hit": true,
+      "prob_of_actual": 0.7116
+    }
+  },
+  "comment": "The model correctly identified Monaco as the clear favorite, assigning them a dominant 71% probability of victory based on their significant rating advantage over Nantes. This prediction proved accurate as Monaco secured a comprehensive 4-0 win, confirming the expected hierarchy between the two sides. The result falls squarely within the anticipated range, reflecting a straightforward dominance by the home team rather than a statistical anomaly."
+}

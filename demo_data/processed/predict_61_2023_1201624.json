@@ -1,0 +1,30 @@
+{
+  "league_id": 61,
+  "season": 2023,
+  "fixture_id": 1201624,
+  "lang": "fr",
+  "prediction": {
+    "home": 0.6298,
+    "draw": 0.1619,
+    "away": 0.2082,
+    "rating_home": 1500.0,
+    "rating_away": 1408.8,
+    "rating_diff": 91.2,
+    "games_home": 0,
+    "games_away": 34,
+    "home_name": "Saint Etienne",
+    "away_name": "Metz",
+    "date": "2024-05-30T18:30:00+00:00",
+    "fixture_id": 1201624,
+    "trained_on": 306,
+    "result": {
+      "home_goals": 2,
+      "away_goals": 1,
+      "outcome": "home",
+      "predicted": "home",
+      "hit": true,
+      "prob_of_actual": 0.6298
+    }
+  },
+  "comment": "Le modèle a parfaitement anticipé la dynamique du match, identifiant Saint-Étienne comme le favori logique avec une probabilité de victoire de près de 63 %, bien supérieure à celle de Metz. Cette prédiction s'est confirmée par le résultat final, où les Verts ont concrétisé leur avantage théorique en remportant la victoire 2-1, validant ainsi l'écart de niveau estimé par l'algorithme."
+}

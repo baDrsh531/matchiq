@@ -1,0 +1,30 @@
+{
+  "league_id": 61,
+  "season": 2023,
+  "fixture_id": 1045156,
+  "lang": "en",
+  "prediction": {
+    "home": 0.3567,
+    "draw": 0.2774,
+    "away": 0.3659,
+    "rating_home": 1515.5,
+    "rating_away": 1583.7,
+    "rating_diff": -68.2,
+    "games_home": 30,
+    "games_away": 30,
+    "home_name": "Lyon",
+    "away_name": "Monaco",
+    "date": "2024-04-28T17:00:00+00:00",
+    "fixture_id": 1045156,
+    "trained_on": 277,
+    "result": {
+      "home_goals": 3,
+      "away_goals": 2,
+      "outcome": "home",
+      "predicted": "away",
+      "hit": false,
+      "prob_of_actual": 0.3567
+    }
+  },
+  "comment": "The model correctly identified Monaco as the slight favorite based on their superior Elo rating, yet the match ended in a 3-2 victory for Lyon, marking a clear upset. This result falls outside the narrow margin of uncertainty predicted by the closely aligned probabilities, demonstrating that the pre-match assessment of a tight contest failed to account for Lyon’s decisive home performance."
+}

@@ -1,0 +1,30 @@
+{
+  "league_id": 61,
+  "season": 2023,
+  "fixture_id": 1045117,
+  "lang": "en",
+  "prediction": {
+    "home": 0.322,
+    "draw": 0.2505,
+    "away": 0.4275,
+    "rating_home": 1458.5,
+    "rating_away": 1560.2,
+    "rating_diff": -101.8,
+    "games_home": 26,
+    "games_away": 26,
+    "home_name": "Lorient",
+    "away_name": "Stade Brestois 29",
+    "date": "2024-03-31T11:00:00+00:00",
+    "fixture_id": 1045117,
+    "trained_on": 237,
+    "result": {
+      "home_goals": 0,
+      "away_goals": 1,
+      "outcome": "away",
+      "predicted": "away",
+      "hit": true,
+      "prob_of_actual": 0.4275
+    }
+  },
+  "comment": "The deterministic Elo model correctly identified Brest as the clear favorite, reflecting their superior pre-match rating and the 101.8-point gap over Lorient. With an away win probability of 42.75%—significantly higher than the home or draw outcomes—the prediction aligned with the actual 0-1 result, confirming the model's assessment of Brest's dominance. This outcome falls within the expected range of the favorite's victory, validating the pre-match analysis without indicating a statistical upset."
+}

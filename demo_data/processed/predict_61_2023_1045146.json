@@ -1,0 +1,30 @@
+{
+  "league_id": 61,
+  "season": 2023,
+  "fixture_id": 1045146,
+  "lang": "fr",
+  "prediction": {
+    "home": 0.5044,
+    "draw": 0.2168,
+    "away": 0.2788,
+    "rating_home": 1497.2,
+    "rating_away": 1482.5,
+    "rating_diff": 14.8,
+    "games_home": 29,
+    "games_away": 29,
+    "home_name": "Reims",
+    "away_name": "Montpellier",
+    "date": "2024-04-21T13:00:00+00:00",
+    "fixture_id": 1045146,
+    "trained_on": 261,
+    "result": {
+      "home_goals": 1,
+      "away_goals": 2,
+      "outcome": "away",
+      "predicted": "home",
+      "hit": false,
+      "prob_of_actual": 0.2788
+    }
+  },
+  "comment": "Le modèle favorisait nettement Reims, lui attribuant une probabilité de victoire de 50,4 % contre seulement 27,9 % pour Montpellier, ce qui reflétait une légère supériorité théorique basée sur le classement. Le résultat final, une victoire 2-1 des visiteurs, constitue donc une surprise majeure qui contredit directement la prédiction. Cette issue démontre que la marge d'incertitude était bien plus élevée que ne le suggérait la différence de cotes, invalidant le favori dans un match qui s'est joué à un seul but."
+}

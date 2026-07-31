@@ -1,0 +1,30 @@
+{
+  "league_id": 61,
+  "season": 2023,
+  "fixture_id": 1045171,
+  "lang": "fr",
+  "prediction": {
+    "home": 0.4621,
+    "draw": 0.2353,
+    "away": 0.3026,
+    "rating_home": 1507.1,
+    "rating_away": 1516.2,
+    "rating_diff": -9.1,
+    "games_home": 32,
+    "games_away": 32,
+    "home_name": "Rennes",
+    "away_name": "Lens",
+    "date": "2024-05-12T19:00:00+00:00",
+    "fixture_id": 1045171,
+    "trained_on": 288,
+    "result": {
+      "home_goals": 1,
+      "away_goals": 1,
+      "outcome": "draw",
+      "predicted": "home",
+      "hit": false,
+      "prob_of_actual": 0.2353
+    }
+  },
+  "comment": "Le modèle Elo, qui privilégiait légèrement Rennes en raison d'une légère avance au classement, a manqué de justesse en prédisant une victoire des locaux pour un match qui s'est finalement soldé par un nul. Avec une probabilité de nul de 23,5 %, le résultat réel tombe dans la catégorie la moins probable selon l'analyse, confirmant que la rencontre était perçue comme indécise et que la domination annoncée n'a pas eu lieu. Il s'agit donc d'un résultat dans la marge d'incertitude, où l'écart de cote entre les deux équipes n'a pas suffi à départager les adversaires."
+}
