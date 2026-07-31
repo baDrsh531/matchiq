@@ -6,7 +6,7 @@ répondent (les autres renvoient 503, sémantique « indisponible »)."""
 from fastapi import APIRouter, HTTPException
 
 from llm.llm_client import LLMQuotaError
-from llm.report_generator import comment_prediction
+from llm.report_generator import comment_prediction, list_cached_prediction_comments
 from ml.ingestion import ApiFootballError, DemoModeError, RateLimitError
 from ml.prediction import league_table, predict_fixture, predict_matchup
 
@@ -70,6 +70,15 @@ def get_fixture_prediction(fixture_id: int, league_id: int = 61, season: int = 2
         raise _guard(exc) from exc
     except Exception as exc:
         raise _guard(exc) from exc
+
+
+@router.get("/comments")
+def get_commented_predictions(league_id: int = 61, season: int = 2023, lang: str = "fr"):
+    """Pronostics déjà commentés (en cache) pour une ligue-saison : le récit
+    « prédit avant / commenté après », sans aucun appel LLM."""
+    lang = lang if lang in ("fr", "en") else "fr"
+    return {"league_id": league_id, "season": season, "lang": lang,
+            "comments": list_cached_prediction_comments(league_id, season, lang)}
 
 
 @router.get("/fixture/{fixture_id}/comment")

@@ -68,6 +68,29 @@ def test_predict_fixture_missing_raises(league):
         prediction.predict_fixture(61, 2023, 123456)
 
 
+def test_list_cached_comments_filters_and_sorts(tmp_path, monkeypatch):
+    import json as _json
+
+    from llm import report_generator as rg
+
+    monkeypatch.setattr(rg, "DATA_PROCESSED_DIR", tmp_path)
+
+    def _write(name, hit, date):
+        (tmp_path / name).write_text(_json.dumps(
+            {"comment": name, "prediction": {"date": date, "result": {"hit": hit}}}
+        ), encoding="utf-8")
+
+    _write("predict_61_2023_1.json", True, "2023-05-01")     # FR, juste
+    _write("predict_61_2023_2.json", False, "2023-04-01")    # FR, surprise
+    _write("predict_61_2023_3_en.json", True, "2023-03-01")  # EN -> exclu en FR
+    _write("predict_99_2023_9.json", True, "2023-02-01")     # autre ligue -> exclu
+
+    fr = rg.list_cached_prediction_comments(61, 2023, "fr")
+    assert [c["comment"] for c in fr] == ["predict_61_2023_2.json", "predict_61_2023_1.json"]  # surprise d'abord
+    en = rg.list_cached_prediction_comments(61, 2023, "en")
+    assert [c["comment"] for c in en] == ["predict_61_2023_3_en.json"]
+
+
 def test_league_table_sorted_with_calibration(league):
     table = prediction.league_table(61, 2023)
     names = [t["name"] for t in table["teams"]]

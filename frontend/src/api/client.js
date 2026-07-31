@@ -93,6 +93,11 @@ export const getFixturePrediction = (fixtureId, leagueId, season) =>
     .get(`/predict/fixture/${fixtureId}`, { params: { league_id: leagueId, season } })
     .then((res) => res.data);
 
+export const getCommentedPredictions = (leagueId, season, lang = "fr") =>
+  api
+    .get("/predict/comments", { params: { league_id: leagueId, season, lang } })
+    .then((res) => res.data);
+
 // ── Monitoring LLM (FinOps) ─────────────────────────────────────────────────
 export const getLlmMetrics = (recent = 20) =>
   api.get("/llm/metrics", { params: { recent } }).then((res) => res.data);

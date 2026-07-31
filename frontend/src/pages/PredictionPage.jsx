@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
-import { getPredictionLeagues, getEloTable, getMatchup } from "../api/client";
+import { getPredictionLeagues, getEloTable, getMatchup, getCommentedPredictions } from "../api/client";
 import { SkeletonBlock } from "../components/Skeleton";
 
 // Barre V/N/D empilée : trois segments proportionnels aux probabilités.
@@ -43,6 +43,7 @@ export default function PredictionPage() {
   const [away, setAway] = useState("");
   const [pred, setPred] = useState(null);
   const [predStatus, setPredStatus] = useState("idle");
+  const [commented, setCommented] = useState([]);
 
   useEffect(() => {
     getPredictionLeagues()
@@ -55,12 +56,16 @@ export default function PredictionPage() {
     setPred(null);
     setHome("");
     setAway("");
+    setCommented([]);
     getEloTable(leagueId, season)
       .then((d) => {
         setTable(d);
         setStatus("done");
       })
       .catch(() => setStatus("error"));
+    getCommentedPredictions(leagueId, season, "fr")
+      .then((d) => setCommented(d.comments || []))
+      .catch(() => setCommented([]));
   }, [leagueId, season]);
 
   const seasons = useMemo(
@@ -206,6 +211,40 @@ export default function PredictionPage() {
               })}
             </div>
           </motion.div>
+
+          {commented.length > 0 && (
+            <motion.div className="panel" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} style={{ marginTop: 18 }}>
+              <div style={{ fontSize: "0.72rem", letterSpacing: "0.05em", color: "var(--text-dim)", marginBottom: 4 }}>
+                PRONOSTICS COMMENTÉS
+              </div>
+              <p style={{ color: "var(--text-dim)", fontSize: "0.78rem", marginTop: 0, marginBottom: 14 }}>
+                Prédit AVANT le match (modèle entraîné sur les seuls résultats antérieurs), commenté APRÈS par le LLM face au résultat réel.
+              </p>
+              <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+                {commented.map((c) => {
+                  const p = c.prediction || {};
+                  const r = p.result || {};
+                  const proba = { home: p.home, draw: p.draw, away: p.away };
+                  return (
+                    <div key={p.fixture_id} style={{ borderTop: "1px solid var(--border)", paddingTop: 12 }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", flexWrap: "wrap", gap: 8, marginBottom: 6 }}>
+                        <strong style={{ fontSize: "0.92rem" }}>
+                          {p.home_name} <span className="mono" style={{ color: "var(--gold)" }}>{r.home_goals}-{r.away_goals}</span> {p.away_name}
+                        </strong>
+                        {r.predicted != null && (
+                          <span style={{ fontSize: "0.72rem", color: r.hit ? "var(--green)" : "var(--red)", border: `1px solid ${r.hit ? "var(--green)" : "var(--red)"}`, borderRadius: 999, padding: "2px 8px" }}>
+                            {r.hit ? "✓ pronostic juste" : "✗ surprise"}
+                          </span>
+                        )}
+                      </div>
+                      <ProbaBar home={proba.home} draw={proba.draw} away={proba.away} />
+                      <p style={{ lineHeight: 1.55, fontSize: "0.88rem", marginTop: 10, marginBottom: 0 }}>{c.comment}</p>
+                    </div>
+                  );
+                })}
+              </div>
+            </motion.div>
+          )}
         </>
       )}
     </>

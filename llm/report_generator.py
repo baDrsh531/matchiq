@@ -61,6 +61,28 @@ def _prediction_comment_cache_path(league_id: int, season: int, fixture_id: int,
     return DATA_PROCESSED_DIR / f"predict_{league_id}_{season}_{fixture_id}{_lang_suffix(lang)}.json"
 
 
+def list_cached_prediction_comments(league_id: int, season: int, lang: str = "fr") -> list[dict]:
+    """Liste les pronostics DÉJÀ commentés (en cache) pour une ligue-saison et une
+    langue. Aucun appel LLM : sert à afficher le récit « prédit avant / commenté
+    après » sans rien régénérer (idéal en mode démo)."""
+    suffix = _lang_suffix(lang)
+    pattern = f"predict_{league_id}_{season}_*{suffix}.json" if suffix else \
+        f"predict_{league_id}_{season}_*.json"
+    out = []
+    for path in DATA_PROCESSED_DIR.glob(pattern):
+        # En FR (suffix=""), exclure les fichiers *_en.json d'autres langues.
+        if not suffix and path.stem.endswith("_en"):
+            continue
+        try:
+            out.append(json.loads(path.read_text(encoding="utf-8")))
+        except (json.JSONDecodeError, OSError):
+            continue
+    # Tri : les surprises d'abord (prédiction ratée), puis par date.
+    out.sort(key=lambda r: (r.get("prediction", {}).get("result", {}).get("hit", True),
+                            r.get("prediction", {}).get("date", "")))
+    return out
+
+
 def comment_prediction(league_id: int, season: int, fixture_id: int,
                        force_refresh: bool = False, lang: str = "fr") -> dict:
     """Prédiction pré-match Elo + commentaire LLM, mis en cache (comme les rapports).
